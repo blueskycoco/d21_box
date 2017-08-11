@@ -51,13 +51,13 @@
 #include "uhc.h"
 
 //! \brief Notify that a SOF has been sent (each 1 ms)
-void main_usb_sof_event(void);
+//void main_usb_sof_event(void);
 
 /*! \brief Notify that a USB device has been connected or disconnected.
  *
  * \param dev         Pointer on USB device information
  * \param b_present   true, if the device has been connected
  */
-void main_usb_connection_event(uhc_device_t *dev, bool b_present);
+//void main_usb_connection_event(uhc_device_t *dev, bool b_present);
 
 #endif // _MAIN_H_

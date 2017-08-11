@@ -48,14 +48,14 @@
 #define _CONF_USB_HOST_H_
 
 #include "compiler.h"
-
+#include "uhi.h"
 /**
  * USB Host Configuration
  * @{
  */
 
 //! Array of UHI APIs Define the list of UHI supported by USB host.
-#define USB_HOST_UHI        UHI_MSC
+#define USB_HOST_UHI        UHI_CDC //UHI_MSC
 
 //! Maximum current allowed on Vbus (mA)
 #define USB_HOST_POWER_MAX  500
@@ -77,25 +77,25 @@
 
 //! To notify that the USB mode are switched automatically.
 //! This is possible only when ID pin is available.
-#define UHC_MODE_CHANGE(b_host_mode)
+//#define UHC_MODE_CHANGE(b_host_mode)
 
 //! To notify that the Vbus level has changed
 //! Available only in USB hardware with Vbus monitoring.
-#define UHC_VBUS_CHANGE(b_present)
+//#define UHC_VBUS_CHANGE(b_present)
 
 //! To notify that a Vbus error has occurred
 //! Available only in USB hardware with Vbus monitoring.
-#define UHC_VBUS_ERROR()
+//#define UHC_VBUS_ERROR()
 
 //! To notify that a device has been connected or disconnected.
-#define UHC_CONNECTION_EVENT(dev,b_present) main_usb_connection_event(dev,b_present)
+//#define UHC_CONNECTION_EVENT(dev,b_present) main_usb_connection_event(dev,b_present)
 
 //! Called when a USB device or the host have wake up the USB line.
-#define UHC_WAKEUP_EVENT()
+//#define UHC_WAKEUP_EVENT()
 
 //! Called for each received SOF each 1 ms
 //! Note: Available in High and Full speed mode
-#define UHC_SOF_EVENT()                    main_usb_sof_event()
+//#define UHC_SOF_EVENT()                    main_usb_sof_event()
 
 //! Called when a USB device configuration must be chosen.
 //! Thus, the application can choose either a configuration number for this
@@ -104,9 +104,13 @@
 //#define UHC_DEVICE_CONF(dev)                uint8_t usb_device_conf(dev)
 
 //! Called when a USB device enumeration is completed.
-#define UHC_ENUM_EVENT(dev,b_status)
-
-
+//#define UHC_ENUM_EVENT(dev,b_status)
+//#define UHI_CDC_CHANGE(dev,b_plug)
+//#define UHI_CDC_RX_NOTIFY()
+#define UHI_CDC_CHANGE(dev, b_plug) my_callback_cdc_change(dev, b_plug)
+extern bool my_callback_cdc_change(uhc_device_t* dev, bool b_plug);
+#define UHI_CDC_RX_NOTIFY() my_callback_cdc_rx_notify()
+extern void my_callback_cdc_rx_notify(void);
 //@}
 
 
@@ -119,13 +123,14 @@
  * Configuration of MSC interface
  * @{
  */
-#define UHI_MSC_CHANGE(dev,b_plug)
+//#define UHI_MSC_CHANGE(dev,b_plug)
 //@}
 //@}
 
 //@}
 
-#include "uhi_msc.h"
+//#include "uhi_msc.h"
+#include "uhi_cdc.h"
 #include "main.h"
 
 #endif // _CONF_USB_HOST_H_

@@ -68,10 +68,10 @@
 #include <extint_callback.h>
 
 // From module: FatFS file system
-#include <diskio.h>
-#include <ff.h>
-#include <ffconf.h>
-#include <integer.h>
+//#include <diskio.h>
+//#include <ff.h>
+//#include <ffconf.h>
+//#include <integer.h>
 
 // From module: Generic board support
 #include <board.h>
@@ -80,7 +80,7 @@
 #include <interrupt.h>
 
 // From module: Memory Control Access Interface
-#include <ctrl_access.h>
+//#include <ctrl_access.h>
 
 // From module: NVM - Non-Volatile Memory
 #include <nvm.h>
@@ -133,7 +133,7 @@
 #include <stdio_serial.h>
 
 // From module: Supported ports of FatFS
-#include <diskio.h>
+//#include <diskio.h>
 
 // From module: USART - Serial interface- SAM implementation for devices with only USART
 #include <serial.h>
@@ -142,13 +142,13 @@
 #include <usb.h>
 
 // From module: USB Host MSC (Single Class support)
-#include <uhi_msc_mem.h>
+#include <uhi_cdc.h>
 
 // From module: USB Host stack core
 #include <uhc.h>
 #include <uhd.h>
 
 // From module: USB MSC Protocol
-#include <usb_protocol_msc.h>
+#include <usb_protocol_cdc.h>
 
 #endif // ASF_H

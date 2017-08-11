@@ -53,9 +53,7 @@ TARGET_SRAM = usb_bootloader_sram.elf
 # List of C source files.
 CSRCS = \
        common/services/sleepmgr/samd/sleepmgr.c           \
-       common/services/storage/ctrl_access/ctrl_access.c  \
-       common/services/usb/class/msc/host/uhi_msc.c       \
-       common/services/usb/class/msc/host/uhi_msc_mem.c   \
+       common/services/usb/class/cdc/host/uhi_cdc.c       \
        common/services/usb/uhc/uhc.c                      \
        common/utils/interrupt/interrupt_sam_nvic.c        \
        common2/services/delay/sam0/cycle_counter.c        \
@@ -76,18 +74,13 @@ CSRCS = \
        sam0/drivers/system/interrupt/system_interrupt.c   \
        sam0/drivers/system/pinmux/pinmux.c                \
        sam0/drivers/system/system.c                       \
-       sam0/drivers/usb/stack_interface/usb_dual.c        \
        sam0/drivers/usb/stack_interface/usb_host_uhd.c    \
        sam0/drivers/usb/usb_sam_d_r/usb.c                 \
        sam0/utils/cmsis/samd21/source/gcc/startup_samd21.c \
        sam0/utils/cmsis/samd21/source/system_samd21.c     \
        sam0/utils/stdio/read.c                            \
        sam0/utils/stdio/write.c                           \
-       sam0/utils/syscalls/gcc/syscalls.c                 \
-       thirdparty/fatfs/fatfs-port-r0.09/diskio.c         \
-       thirdparty/fatfs/fatfs-port-r0.09/sam0/fattime_rtc.c \
-       thirdparty/fatfs/fatfs-r0.09/src/ff.c              \
-       thirdparty/fatfs/fatfs-r0.09/src/option/ccsbcs.c
+       sam0/utils/syscalls/gcc/syscalls.c                 
 
 # List of assembler source files.
 ASSRCS = 
@@ -97,10 +90,9 @@ INC_PATH = \
        common/boards                                      \
        common/services/serial                             \
        common/services/sleepmgr                           \
-       common/services/storage/ctrl_access                \
        common/services/usb                                \
-       common/services/usb/class/msc                      \
-       common/services/usb/class/msc/host                 \
+       common/services/usb/class/cdc                      \
+       common/services/usb/class/cdc/host                 \
        common/services/usb/uhc                            \
        common/utils                                       \
        common2/services/delay                             \
@@ -139,8 +131,6 @@ INC_PATH = \
        sam0/utils/stdio/stdio_serial                      \
        thirdparty/CMSIS/Include                           \
        thirdparty/CMSIS/Lib/GCC                           \
-       thirdparty/fatfs/fatfs-port-r0.09/sam0             \
-       thirdparty/fatfs/fatfs-r0.09/src \
        sam0/applications/usb_msc_bootloader/bootloader/samd21j18a_samd21_xplained_pro/gcc
 
 # Additional search paths for libraries.
