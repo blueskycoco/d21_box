@@ -56,7 +56,7 @@
 /* File Data Buffer */
 //COMPILER_WORD_ALIGNED
 //volatile uint8_t buffer[FLASH_BUFFER_SIZE];
-
+char device_serial_no[32] = {0};
 #if CONSOLE_OUTPUT_ENABLED
 //! Console Strings
 #define APP_HEADER                   \
@@ -68,6 +68,7 @@ struct usart_module usart_instance;
 
 static void console_init(void);
 #endif
+static struct usart_module gprs_uart_module;
 
 #if CONSOLE_OUTPUT_ENABLED
 /**
@@ -91,10 +92,102 @@ static void console_init(void)
 }
 #endif
 
+static void gprs_init(void)
+{
+	struct usart_config usart_conf;
+
+	usart_get_config_defaults(&usart_conf);
+	usart_conf.mux_setting = CONF_GPRS_MUX_SETTING;
+	usart_conf.pinmux_pad0 = CONF_GPRS_PINMUX_PAD0;
+	usart_conf.pinmux_pad1 = CONF_GPRS_PINMUX_PAD1;
+	usart_conf.pinmux_pad2 = CONF_GPRS_PINMUX_PAD2;
+	usart_conf.pinmux_pad3 = CONF_GPRS_PINMUX_PAD3;
+	usart_conf.baudrate    = CONF_GPRS_BAUDRATE;
+
+	usart_serial_init(&gprs_uart_module, CONF_GPRS_USART_MODULE, &usart_conf);
+	usart_enable(&gprs_uart_module);
+}
+static uint8_t gprs_send_cmd(const uint8_t *cmd, int len)
+{
+	uint8_t rcv[2] = {0};
+	usart_serial_write_packet(&gprs_uart_module, cmd, len);
+	usart_serial_read_packet(&gprs_uart_module, rcv, 2);
+	if (memcmp(rcv, "OK", 2) == 0 ||
+			memcmp(rcv, "CO", 2) == 0)
+			return 1;
+
+	return 0;
+}
+static uint8_t gprs_config(void)
+{
+	uint8_t result = 0;
+	const uint8_t qifgcnt[] 	= "AT+QIFGCNT=0\n";
+	const uint8_t qicsgp[] 	= "AT+QICSGP=1,\"CMNET\"\n";
+	const uint8_t qiregapp[] 	= "AT+QIREGAPP\n";
+	const uint8_t qiact[] 	= "AT+QIACT\n";
+	const uint8_t qhttpurl[] 	= "AT+QHTTPURL=49,30\n";
+	const uint8_t url[] = "http://stage.weitang.com/sgSugarRecor/upload_json\n";
+	/*uint8_t qhttpurl[] 	= "AT+QHTTPURL=48,30\n";
+	  uint8_t url[] = "http://www.boyibang.com/sgSugarRecor/upload_json\n";*/
+	gprs_init();
+
+	result = gprs_send_cmd(qifgcnt, strlen((const char *)qifgcnt));
+	if (result)
+		result = gprs_send_cmd(qicsgp, strlen((const char *)qicsgp));
+	if (result)
+		result = gprs_send_cmd(qiregapp, strlen((const char *)qiregapp));
+	if (result)
+		result = gprs_send_cmd(qiact, strlen((const char *)qiact));
+	if (result)
+	{
+		result = gprs_send_cmd(qhttpurl, strlen((const char *)qhttpurl));
+		if (result)
+		{
+			uint8_t rcv[2] = {0};
+			usart_serial_write_packet(&gprs_uart_module, url, strlen((const char *)url));
+			usart_serial_read_packet(&gprs_uart_module, rcv, 2);
+			if (memcmp(rcv, "OK", 2) == 0)
+				result = 1;
+			else
+				result = 0;
+		}
+	}
+	return result;
+}
+
+static uint8_t http_post(uint8_t *data, int len)
+{
+	uint8_t result = 0;
+	uint8_t post_cmd[32] = {0};
+	uint8_t rcv[7] = {0};
+	uint8_t response[16] = {0};
+	const uint8_t read_response[] = "AT+QHTTPREAD=30\n";
+	sprintf((char *)post_cmd, "AT+QHTTPPOST=%d,50,10\n", len);
+	
+	usart_serial_write_packet(&gprs_uart_module, post_cmd, strlen((const char *)post_cmd));
+	usart_serial_read_packet(&gprs_uart_module, rcv, 7);
+
+	if (memcmp(rcv, "CONNECT", 7) == 0)
+	{		
+		usart_serial_write_packet(&gprs_uart_module, data, len);
+		usart_serial_read_packet(&gprs_uart_module, rcv, 2);
+		if (memcmp(rcv, "OK", 2) == 0)
+		{
+			result = gprs_send_cmd(read_response, strlen((const char *)read_response));
+			if (result)
+			{
+				usart_serial_read_packet(&gprs_uart_module, response, 16);
+				printf("response: %s \n", response);
+			}
+		}
+	}
+	
+	return result;
+}
 /**
  * \brief Initializes the device for the bootloader
  */
-static void bootloader_system_init(void)
+static void black_system_init(void)
 {
 	struct nvm_config nvm_cfg;
 	struct port_config pin;
@@ -123,12 +216,12 @@ static void bootloader_system_init(void)
 	/* Print a header */
 	puts(APP_HEADER);
 #endif
-
 	/* Enable the global interrupts */
 	cpu_irq_enable();
 	ui_init();
 	/* Start USB host stack */
 	uhc_start();
+	gprs_config();
 }
 
 
@@ -137,9 +230,18 @@ static void bootloader_system_init(void)
  */
 int main(void)
 {
-	/* Device initialization for the bootloader */
-	bootloader_system_init();
+	uint32_t serial_no[4];
 
+	/* Device initialization for the bootloader */
+	serial_no[0] = *(uint32_t *)0x0080A00C;
+	serial_no[1] = *(uint32_t *)0x0080A040;
+	serial_no[2] = *(uint32_t *)0x0080A044;
+	serial_no[3] = *(uint32_t *)0x0080A048;
+	sprintf(device_serial_no, "%08x%08x%08x%08x",
+		(unsigned)serial_no[0], (unsigned)serial_no[1],
+		(unsigned)serial_no[2], (unsigned)serial_no[3]);
+	black_system_init();
+	printf("we are here\n");
 #if CONSOLE_OUTPUT_ENABLED
 	/* Print a header */
 	puts("Insert device\r\n");
