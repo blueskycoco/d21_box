@@ -37,7 +37,7 @@
 #
 
 # Path to top level ASF directory relative to this project directory.
-PRJ_PATH = ../../../../../..
+PRJ_PATH = ../../../../..
 
 # Target CPU architecture: cortex-m3, cortex-m4
 ARCH = cortex-m0plus
@@ -47,8 +47,8 @@ PART = samd21j18a
 
 # Application target name. Given with suffix .a for library and .elf for a
 # standalone application.
-TARGET_FLASH = usb_bootloader_flash.elf
-TARGET_SRAM = usb_bootloader_sram.elf
+TARGET_FLASH = black_flash.elf
+TARGET_SRAM = black_sram.elf
 
 # List of C source files.
 CSRCS = \
@@ -57,7 +57,7 @@ CSRCS = \
        common/services/usb/uhc/uhc.c                      \
        common/utils/interrupt/interrupt_sam_nvic.c        \
        common2/services/delay/sam0/cycle_counter.c        \
-       sam0/applications/usb_msc_bootloader/bootloader/main.c \
+       sam0/applications/black/main.c \
        sam0/boards/samd21_xplained_pro/board_init.c       \
        sam0/drivers/dma/dma.c                             \
        sam0/drivers/extint/extint_callback.c              \
@@ -97,8 +97,8 @@ INC_PATH = \
        common/utils                                       \
        common2/services/delay                             \
        common2/services/delay/sam0                        \
-       sam0/applications/usb_msc_bootloader/bootloader    \
-       sam0/applications/usb_msc_bootloader/bootloader/samd21j18a_samd21_xplained_pro \
+       sam0/applications/black    \
+       sam0/applications/black/samd21j18a_samd21_xplained_pro \
        sam0/boards                                        \
        sam0/boards/samd21_xplained_pro                    \
        sam0/drivers/dma                                   \
@@ -131,7 +131,7 @@ INC_PATH = \
        sam0/utils/stdio/stdio_serial                      \
        thirdparty/CMSIS/Include                           \
        thirdparty/CMSIS/Lib/GCC                           \
-       sam0/applications/usb_msc_bootloader/bootloader/samd21j18a_samd21_xplained_pro/gcc
+       sam0/applications/black/samd21j18a_samd21_xplained_pro/gcc
 
 # Additional search paths for libraries.
 LIB_PATH =  \
@@ -142,7 +142,7 @@ LIBS =  \
        arm_cortexM0l_math                                
 
 # Path relative to top level directory pointing to a linker script.
-LINKER_SCRIPT_FLASH = sam0/applications/usb_msc_bootloader/bootloader/samd21j18a_samd21_xplained_pro/linker_scripts/gcc/flash.ld
+LINKER_SCRIPT_FLASH = sam0/applications/black/samd21j18a_samd21_xplained_pro/linker_scripts/gcc/flash.ld
 LINKER_SCRIPT_SRAM  = sam0/utils/linker_scripts/samd21/gcc/samd21j18a_sram.ld
 
 # Path relative to top level directory pointing to a linker script.
