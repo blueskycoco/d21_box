@@ -141,14 +141,14 @@
 // From module: USB - Universal Serial Bus
 #include <usb.h>
 
-// From module: USB Host MSC (Single Class support)
-#include <uhi_cdc.h>
+// From module: USB HID Device protocol
+#include <usb_protocol_hid.h>
+
+// From module: USB Host HID Mouse (Single Class support)
+#include <uhi_hid_mouse.h>
 
 // From module: USB Host stack core
 #include <uhc.h>
 #include <uhd.h>
-
-// From module: USB MSC Protocol
-#include <usb_protocol_cdc.h>
 
 #endif // ASF_H

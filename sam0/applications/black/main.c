@@ -91,48 +91,6 @@ static void console_init(void)
 }
 #endif
 
-static bool my_flag_cdc_available = false;
-bool my_callback_cdc_change(uhc_device_t* dev, bool b_plug)
-{
-	if (b_plug) {
-		my_flag_cdc_available = true;
-		usb_cdc_line_coding_t cfg = {
-			.dwDTERate = CPU_TO_LE32(115200),
-			.bCharFormat = CDC_STOP_BITS_1,
-			.bParityType = CDC_PAR_NONE,
-			.bDataBits = 8,
-		};
-		uhi_cdc_open(0, &cfg);
-	} else {
-		my_flag_cdc_available = false;
-	}
-}
-void my_callback_cdc_rx_notify(void)
-{
-	/* Wakeup my_task_rx() task */
-}
-#define MESSAGE "Hello"
-void my_task(void)
-{
-	static bool startup = true;
-	if (!my_flag_cdc_available) {
-		startup = true;
-		return;
-	}
-	if (startup) {
-		startup = false;
-		uhi_cdc_write_buf(0, MESSAGE, sizeof(MESSAGE)-1);
-		uhi_cdc_putc(0,'\n');
-		return;
-	}
-}
-
-void my_task_rx(void)
-{
-	while (uhi_cdc_is_rx_ready(0)) {
-		int value = uhi_cdc_getc(0);
-	}
-}
 /**
  * \brief Initializes the device for the bootloader
  */
@@ -168,7 +126,7 @@ static void bootloader_system_init(void)
 
 	/* Enable the global interrupts */
 	cpu_irq_enable();
-
+	ui_init();
 	/* Start USB host stack */
 	uhc_start();
 }
@@ -186,5 +144,8 @@ int main(void)
 	/* Print a header */
 	puts("Insert device\r\n");
 #endif
+	while (true) {
+		sleepmgr_enter_sleep();
+	}
 }
 
