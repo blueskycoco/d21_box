@@ -65,11 +65,13 @@ CSRCS = \
        sam0/drivers/extint/extint_sam_d_r_h/extint.c      \
        sam0/drivers/nvm/nvm.c                             \
        sam0/drivers/port/port.c                           \
+       sam0/drivers/rtc/quick_start_calendar_callback/qs_rtc_calendar_callback.c \
        sam0/drivers/rtc/rtc_sam_d_r_h/rtc_calendar.c      \
        sam0/drivers/sercom/sercom.c                       \
        sam0/drivers/sercom/sercom_interrupt.c             \
        sam0/drivers/sercom/usart/usart.c                  \
        sam0/drivers/sercom/usart/usart_interrupt.c        \
+       sam0/drivers/rtc/rtc_sam_d_r_h/rtc_calendar_interrupt.c \
        sam0/drivers/system/clock/clock_samd21_r21_da_ha1/clock.c \
        sam0/drivers/system/clock/clock_samd21_r21_da_ha1/gclk.c \
        sam0/drivers/system/interrupt/system_interrupt.c   \
@@ -108,6 +110,8 @@ INC_PATH = \
        sam0/drivers/nvm                                   \
        sam0/drivers/port                                  \
        sam0/drivers/rtc                                   \
+       sam0/drivers/rtc/quick_start_calendar_callback     \
+       sam0/drivers/rtc/quick_start_calendar_callback/samd21_xplained_pro \
        sam0/drivers/rtc/rtc_sam_d_r_h                     \
        sam0/drivers/sercom                                \
        sam0/drivers/sercom/usart                          \
@@ -184,7 +188,7 @@ CPPFLAGS = \
        -D BOARD=SAMD21_XPLAINED_PRO                       \
        -D CYCLE_MODE                                      \
        -D EXTINT_CALLBACK_MODE=true                       \
-       -D RTC_CALENDAR_ASYNC=false                        \
+       -D RTC_CALENDAR_ASYNC=true                         \
        -D UHD_ENABLE                                      \
        -D USART_CALLBACK_MODE=true                        \
        -D USB_HOST_LPM_SUPPORT                            \

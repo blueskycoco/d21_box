@@ -93,6 +93,7 @@
 
 // From module: RTC - Real Time Counter in Calendar Mode (Polled APIs)
 #include <rtc_calendar.h>
+#include <rtc_calendar_interrupt.h>
 #include <rtc_tamper.h>
 
 // From module: SAM D21/R21/D11/L21/DA1/L22 USB Dual role interface
