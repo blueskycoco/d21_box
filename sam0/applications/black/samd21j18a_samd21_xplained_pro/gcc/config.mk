@@ -58,6 +58,8 @@ CSRCS = \
        common/utils/interrupt/interrupt_sam_nvic.c        \
        common2/services/delay/sam0/cycle_counter.c        \
        sam0/applications/black/main.c \
+       sam0/applications/black/cJSON.c \
+       sam0/applications/black/rtc.c \
        sam0/applications/black/ui.c \
        sam0/boards/samd21_xplained_pro/board_init.c       \
        sam0/drivers/dma/dma.c                             \
@@ -65,7 +67,6 @@ CSRCS = \
        sam0/drivers/extint/extint_sam_d_r_h/extint.c      \
        sam0/drivers/nvm/nvm.c                             \
        sam0/drivers/port/port.c                           \
-       sam0/drivers/rtc/quick_start_calendar_callback/qs_rtc_calendar_callback.c \
        sam0/drivers/rtc/rtc_sam_d_r_h/rtc_calendar.c      \
        sam0/drivers/sercom/sercom.c                       \
        sam0/drivers/sercom/sercom_interrupt.c             \
@@ -110,8 +111,6 @@ INC_PATH = \
        sam0/drivers/nvm                                   \
        sam0/drivers/port                                  \
        sam0/drivers/rtc                                   \
-       sam0/drivers/rtc/quick_start_calendar_callback     \
-       sam0/drivers/rtc/quick_start_calendar_callback/samd21_xplained_pro \
        sam0/drivers/rtc/rtc_sam_d_r_h                     \
        sam0/drivers/sercom                                \
        sam0/drivers/sercom/usart                          \

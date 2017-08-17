@@ -1,4 +1,5 @@
 #include <asf.h>
+#include <stdbool.h>
 struct rtc_module rtc_instance;
 struct rtc_calendar_alarm_time alarm;
 
