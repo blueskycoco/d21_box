@@ -9,17 +9,12 @@
 #include "rtc.h"
 
 #if CONSOLE_OUTPUT_ENABLED
-//! Console Strings
 #define APP_HEADER                   \
 					"samd21 black box\r\n"
 #endif
-/* File Data Buffer */
 //COMPILER_WORD_ALIGNED
 //volatile uint8_t buffer[FLASH_BUFFER_SIZE];
 char device_serial_no[32] = {0};
-/**
- * \brief Initializes the device for the bootloader
- */
 static void black_system_init(void)
 {
 	struct nvm_config nvm_cfg;
@@ -58,14 +53,10 @@ static void black_system_init(void)
 }
 
 
-/**
- * \brief Main function. Execution starts here.
- */
 int main(void)
 {
 	uint32_t serial_no[4];
 
-	/* Device initialization for the bootloader */
 	serial_no[0] = *(uint32_t *)0x0080A00C;
 	serial_no[1] = *(uint32_t *)0x0080A040;
 	serial_no[2] = *(uint32_t *)0x0080A044;
@@ -76,7 +67,6 @@ int main(void)
 	black_system_init();
 	printf("we are here\n");
 #if CONSOLE_OUTPUT_ENABLED
-	/* Print a header */
 	puts("Insert device\r\n");
 #endif
 	while (true) {
