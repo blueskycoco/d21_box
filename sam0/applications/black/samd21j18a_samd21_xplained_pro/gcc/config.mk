@@ -60,7 +60,7 @@ CSRCS = \
        sam0/applications/black/main.c \
        sam0/applications/black/cJSON.c \
        sam0/applications/black/rtc.c \
-       sam0/applications/black/ui.c \
+       sam0/applications/black/usb.c \
        sam0/boards/samd21_xplained_pro/board_init.c       \
        sam0/drivers/dma/dma.c                             \
        sam0/drivers/extint/extint_callback.c              \

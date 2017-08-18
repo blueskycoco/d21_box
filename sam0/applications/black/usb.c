@@ -45,7 +45,7 @@
  */
 
 #include <asf.h>
-#include "ui.h"
+#include "usb.h"
 
 /**
  * \name Internal routines to manage asynchronous interrupt pin change
