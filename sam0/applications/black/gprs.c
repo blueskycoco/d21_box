@@ -1,4 +1,6 @@
 #include <asf.h>
+#include <string.h>
+#include "conf_uart_serial.h"
 #include "gprs.h"
 static struct usart_module gprs_uart_module;
 

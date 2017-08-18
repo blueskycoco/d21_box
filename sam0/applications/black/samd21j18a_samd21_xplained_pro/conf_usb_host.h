@@ -132,5 +132,5 @@
 //#include "uhi_msc.h"
 #include "uhi_hid_mouse.h"
 #include "main.h"
-#include "ui.h"
+#include "box_usb.h"
 #endif // _CONF_USB_HOST_H_

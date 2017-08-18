@@ -60,7 +60,9 @@ CSRCS = \
        sam0/applications/black/main.c \
        sam0/applications/black/cJSON.c \
        sam0/applications/black/rtc.c \
-       sam0/applications/black/usb.c \
+       sam0/applications/black/misc.c \
+       sam0/applications/black/gprs.c \
+       sam0/applications/black/box_usb.c \
        sam0/boards/samd21_xplained_pro/board_init.c       \
        sam0/drivers/dma/dma.c                             \
        sam0/drivers/extint/extint_callback.c              \
@@ -191,7 +193,7 @@ CPPFLAGS = \
        -D UHD_ENABLE                                      \
        -D USART_CALLBACK_MODE=true                        \
        -D USB_HOST_LPM_SUPPORT                            \
-       -D __SAMD21J18A__
+       -D __SAMD21J18A__								  
 
 # Extra flags to use when linking
 LDFLAGS = \

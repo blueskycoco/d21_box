@@ -1,9 +1,10 @@
 #include <asf.h>
 #include <stdbool.h>
+#include "rtc.h"
 struct rtc_module rtc_instance;
 struct rtc_calendar_alarm_time alarm;
 
-void rtc_match_callback(void)
+static void rtc_match_callback(void)
 {
 	alarm.time.hour 	+= 1;
 	alarm.time.hour 	= alarm.time.hour % 24;
