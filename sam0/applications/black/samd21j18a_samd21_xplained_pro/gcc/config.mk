@@ -61,9 +61,11 @@ CSRCS = \
        sam0/applications/black/cJSON.c \
        sam0/applications/black/rtc.c \
        sam0/applications/black/misc.c \
+       sam0/applications/black/flash.c \
        sam0/applications/black/gprs.c \
        sam0/applications/black/box_usb.c \
        sam0/boards/samd21_xplained_pro/board_init.c       \
+       sam0/drivers/bod/bod_sam_d_r_h/bod.c               \
        sam0/drivers/dma/dma.c                             \
        sam0/drivers/extint/extint_callback.c              \
        sam0/drivers/extint/extint_sam_d_r_h/extint.c      \
@@ -80,6 +82,7 @@ CSRCS = \
        sam0/drivers/system/interrupt/system_interrupt.c   \
        sam0/drivers/system/pinmux/pinmux.c                \
        sam0/drivers/system/system.c                       \
+       sam0/services/eeprom/emulator/main_array/eeprom.c  \
        sam0/drivers/usb/stack_interface/usb_host_uhd.c    \
        sam0/drivers/usb/usb_sam_d_r/usb.c                 \
        sam0/utils/cmsis/samd21/source/gcc/startup_samd21.c \
@@ -105,8 +108,10 @@ INC_PATH = \
        common2/services/delay/sam0                        \
        sam0/applications/black    \
        sam0/applications/black/samd21j18a_samd21_xplained_pro \
+       sam0/drivers/bod                                   \
        sam0/boards                                        \
        sam0/boards/samd21_xplained_pro                    \
+       sam0/drivers/bod/bod_sam_d_r_h                     \
        sam0/drivers/dma                                   \
        sam0/drivers/extint                                \
        sam0/drivers/extint/extint_sam_d_r_h               \
@@ -119,6 +124,7 @@ INC_PATH = \
        sam0/drivers/system                                \
        sam0/drivers/system/clock                          \
        sam0/drivers/system/clock/clock_samd21_r21_da_ha1  \
+       sam0/services/eeprom/emulator/main_array           \
        sam0/drivers/system/interrupt                      \
        sam0/drivers/system/interrupt/system_interrupt_samd21 \
        sam0/drivers/system/pinmux                         \

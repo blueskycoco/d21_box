@@ -59,6 +59,7 @@
 // From module: DMAC - Direct Memory Access Controller
 #include <dma.h>
 #include <dma_crc.h>
+#include <bod.h>
 
 // From module: Delay routines
 #include <delay.h>
@@ -72,7 +73,7 @@
 //#include <ff.h>
 //#include <ffconf.h>
 //#include <integer.h>
-
+#include <eeprom.h>
 // From module: Generic board support
 #include <board.h>
 

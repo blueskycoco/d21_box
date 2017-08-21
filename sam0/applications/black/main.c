@@ -7,14 +7,14 @@
 #include "gprs.h"
 #include "usb.h"
 #include "rtc.h"
+#include "flash.h"
 
 #if CONSOLE_OUTPUT_ENABLED
-#define APP_HEADER                   \
-					"samd21 black box\r\n"
+#define APP_HEADER "samd21 black box\r\n"
 #endif
 //COMPILER_WORD_ALIGNED
 //volatile uint8_t buffer[FLASH_BUFFER_SIZE];
-char device_serial_no[32] = {0};
+char device_serial_no[33] = {0};
 static void black_system_init(void)
 {
 	struct nvm_config nvm_cfg;
@@ -42,7 +42,7 @@ static void black_system_init(void)
 	/* Wait stdio stable */
 	delay_ms(5);
 	/* Print a header */
-	puts(APP_HEADER);
+	printf(APP_HEADER);
 #endif
 	/* Enable the global interrupts */
 	cpu_irq_enable();
@@ -56,6 +56,7 @@ static void black_system_init(void)
 int main(void)
 {
 	uint32_t serial_no[4];
+	uint8_t page_data[EEPROM_PAGE_SIZE];	
 
 	serial_no[0] = *(uint32_t *)0x0080A00C;
 	serial_no[1] = *(uint32_t *)0x0080A040;
@@ -65,10 +66,18 @@ int main(void)
 		(unsigned)serial_no[0], (unsigned)serial_no[1],
 		(unsigned)serial_no[2], (unsigned)serial_no[3]);
 	black_system_init();
-	printf("we are here\n");
+	printf("ID %x %x %x %x \r\n", serial_no[0],
+			serial_no[1], serial_no[2], serial_no[3]);
 #if CONSOLE_OUTPUT_ENABLED
-	puts("Insert device\r\n");
+	printf("Insert device\r\n");
 #endif
+	init_rtc();
+	struct rtc_calendar_time cur_time;
+	get_rtc_time(&cur_time);
+	printf("set time %d\r\n",set_rtc_time(cur_time));
+	configure_eeprom();
+	configure_bod();
+	eeprom_emulator_read_page(0, page_data);
 	while (true) {
 		sleepmgr_enter_sleep();
 	}
