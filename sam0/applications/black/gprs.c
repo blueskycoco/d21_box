@@ -27,6 +27,8 @@ static uint8_t gprs_send_cmd(const uint8_t *cmd, int len)
 	if (memcmp(rcv, "OK", 2) == 0 ||
 			memcmp(rcv, "CO", 2) == 0)
 			return 1;
+	else
+		printf("there is no response from m26 cmd %s\r\n",cmd);
 
 	return 0;
 }
@@ -37,10 +39,12 @@ uint8_t gprs_config(void)
 	const uint8_t qicsgp[] 	= "AT+QICSGP=1,\"CMNET\"\n";
 	const uint8_t qiregapp[] 	= "AT+QIREGAPP\n";
 	const uint8_t qiact[] 	= "AT+QIACT\n";
-	const uint8_t qhttpurl[] 	= "AT+QHTTPURL=49,30\n";
+	/*const uint8_t qhttpurl[] 	= "AT+QHTTPURL=49,30\n";
 	const uint8_t url[] = "http://stage.weitang.com/sgSugarRecor/upload_json\n";
-	/*uint8_t qhttpurl[] 	= "AT+QHTTPURL=48,30\n";
-	  uint8_t url[] = "http://www.boyibang.com/sgSugarRecor/upload_json\n";*/
+	uint8_t qhttpurl[] 	= "AT+QHTTPURL=48,30\n";
+	  uint8_t url[] = "http://www.boyibang.com/sgSugarRecor/upload_json\n";*/	  
+	const uint8_t qhttpurl[] 	= "AT+QHTTPURL=56,30\n";
+	const uint8_t url[] = "http://123.57.26.24:8080/saveData/airmessage/messMgr.do\n";
 	gprs_init();
 
 	result = gprs_send_cmd(qifgcnt, strlen((const char *)qifgcnt));
@@ -89,10 +93,23 @@ uint8_t http_post(uint8_t *data, int len)
 			if (result)
 			{
 				usart_serial_read_packet(&gprs_uart_module, response, 16);
-				printf("response: %s \n", response);
+				printf("response: %s \r\n", response);
 			}
+			else
+				printf("there is no response from m26 3\r\n");
 		}
+		else
+			printf("there is no response from m26 2\r\n");
 	}
+	else
+		printf("there is no response from m26 1\r\n");
 	
 	return result;
+}
+void test_gprs(void)
+{
+	//{"0":"5","30":"Radar048","35":"","36":"9517"}
+	//"http://123.57.26.24:8080/saveData/airmessage/messMgr.do"
+	char data[] = "{\"0\":\"5\",\"30\":\"Radar048\",\"35\":\"\",\"36\":\"9517\"}";
+	http_post(data,strlen(data));
 }
