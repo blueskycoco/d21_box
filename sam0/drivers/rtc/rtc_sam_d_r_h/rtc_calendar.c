@@ -350,7 +350,7 @@ void rtc_calendar_init(
 	system_gclk_chan_enable(RTC_GCLK_ID);
 
 	/* Reset module to hardware defaults. */
-	rtc_calendar_reset(module);
+	//rtc_calendar_reset(module);
 
 	/* Save conf_struct internally for continued use. */
 	module->clock_24h           = config->clock_24h;
