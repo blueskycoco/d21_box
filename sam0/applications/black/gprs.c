@@ -21,15 +21,14 @@ static void gprs_init(void)
 }
 static uint8_t gprs_send_cmd(const uint8_t *cmd, int len)
 {
-	uint8_t rcv[2] = {0};
+	uint8_t rcv[32] = {0};
 	usart_serial_write_packet(&gprs_uart_module, cmd, len);
-	usart_serial_read_packet(&gprs_uart_module, rcv, 2);
-	if (memcmp(rcv, "OK", 2) == 0 ||
-			memcmp(rcv, "CO", 2) == 0)
-			return 1;
+	usart_serial_read_packet(&gprs_uart_module, rcv, 32);
+	printf("gprs rcv %s",rcv);
+	if (strstr(rcv, "OK") != NULL || strstr(rcv, "CONNECT") != NULL)
+		return 1;
 	else
-		printf("there is no response from m26 cmd %s\r\n",cmd);
-
+		printf("there is no response from m26 cmd %s\r\n",rcv);
 	return 0;
 }
 uint8_t gprs_config(void)
@@ -52,17 +51,20 @@ uint8_t gprs_config(void)
 		result = gprs_send_cmd(qicsgp, strlen((const char *)qicsgp));
 	if (result)
 		result = gprs_send_cmd(qiregapp, strlen((const char *)qiregapp));
+	//need sleep here
 	if (result)
 		result = gprs_send_cmd(qiact, strlen((const char *)qiact));
+	//need sleep some seconds to read
 	if (result)
 	{
 		result = gprs_send_cmd(qhttpurl, strlen((const char *)qhttpurl));
 		if (result)
 		{
-			uint8_t rcv[2] = {0};
+			uint8_t rcv[32] = {0};
 			usart_serial_write_packet(&gprs_uart_module, url, strlen((const char *)url));
-			usart_serial_read_packet(&gprs_uart_module, rcv, 2);
-			if (memcmp(rcv, "OK", 2) == 0)
+			usart_serial_read_packet(&gprs_uart_module, rcv, 32);
+			printf("url rcv %s\r\n",rcv);
+			if (strstr(rcv, "OK") != NULL)
 				result = 1;
 			else
 				result = 0;
@@ -75,19 +77,21 @@ uint8_t http_post(uint8_t *data, int len)
 {
 	uint8_t result = 0;
 	uint8_t post_cmd[32] = {0};
-	uint8_t rcv[7] = {0};
+	uint8_t rcv[32] = {0};
 	uint8_t response[16] = {0};
 	const uint8_t read_response[] = "AT+QHTTPREAD=30\n";
 	sprintf((char *)post_cmd, "AT+QHTTPPOST=%d,50,10\n", len);
 	
 	usart_serial_write_packet(&gprs_uart_module, post_cmd, strlen((const char *)post_cmd));
-	usart_serial_read_packet(&gprs_uart_module, rcv, 7);
-
-	if (memcmp(rcv, "CONNECT", 7) == 0)
+	usart_serial_read_packet(&gprs_uart_module, rcv, 32);
+	printf("post cmd rcv %s\r\n",rcv);
+	if (strstr(rcv, "CONNECT") != NULL)
 	{		
+		memset(rcv,0,32);
 		usart_serial_write_packet(&gprs_uart_module, data, len);
-		usart_serial_read_packet(&gprs_uart_module, rcv, 2);
-		if (memcmp(rcv, "OK", 2) == 0)
+		usart_serial_read_packet(&gprs_uart_module, rcv, 32);
+		printf("data rcv %s\r\n",rcv);
+		if (strstr(rcv, "OK") != NULL)
 		{
 			result = gprs_send_cmd(read_response, strlen((const char *)read_response));
 			if (result)
