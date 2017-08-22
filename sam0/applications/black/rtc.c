@@ -6,13 +6,10 @@ struct rtc_calendar_alarm_time alarm;
 
 static void rtc_match_callback(void)
 {
-	struct rtc_calendar_time time;
 	alarm.time.second += 10;
 	alarm.time.second = alarm.time.second % 60;
 	alarm.mask = RTC_CALENDAR_ALARM_MASK_SEC;	
 	rtc_calendar_set_alarm(&rtc_instance, &alarm, RTC_CALENDAR_ALARM_0);
-	printf("rtc alarmed \r\n");
-	get_rtc_time(&time);
 }
 bool set_rtc_time(struct rtc_calendar_time cur_time)
 {	

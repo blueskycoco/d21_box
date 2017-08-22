@@ -57,6 +57,7 @@ int main(void)
 {
 	uint32_t serial_no[4];
 	uint8_t page_data[EEPROM_PAGE_SIZE];	
+	struct rtc_calendar_time time;
 
 	serial_no[0] = *(uint32_t *)0x0080A00C;
 	serial_no[1] = *(uint32_t *)0x0080A040;
@@ -79,7 +80,11 @@ int main(void)
 	configure_bod();
 	eeprom_emulator_read_page(0, page_data);
 	while (true) {
+		printf("rtc alarmed \r\n");
+		get_rtc_time(&time);
+		printf("enter sleep\r\n");
 		sleepmgr_enter_sleep();
+		printf("leave sleep\r\n");
 	}
 }
 

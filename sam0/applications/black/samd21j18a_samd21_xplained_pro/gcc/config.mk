@@ -55,6 +55,7 @@ CSRCS = \
        common/services/sleepmgr/samd/sleepmgr.c           \
        common/services/usb/class/hid/host/mouse/uhi_hid_mouse.c       \
        common/services/usb/uhc/uhc.c                      \
+       common/services/calendar/calendar.c                      \
        common/utils/interrupt/interrupt_sam_nvic.c        \
        common2/services/delay/sam0/cycle_counter.c        \
        sam0/applications/black/main.c \
@@ -103,6 +104,7 @@ INC_PATH = \
        common/services/usb/class/hid                      \
        common/services/usb/class/hid/host/mouse                 \
        common/services/usb/uhc                            \
+       common/services/calendar                      \
        common/utils                                       \
        common2/services/delay                             \
        common2/services/delay/sam0                        \

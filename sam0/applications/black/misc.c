@@ -4,6 +4,7 @@
 #include "cJSON.h"
 #include "conf_bootloader.h"
 #include "misc.h"
+#include <calendar.h>
 #if CONSOLE_OUTPUT_ENABLED
 #include "conf_uart_serial.h"
 #endif
@@ -67,7 +68,6 @@ char *doit(char *text,char *item_str)
 	if (!item_json) {printf("Error data before: [%s]\n",cJSON_GetErrorPtr());}
 	else
 	{
-
 		cJSON *data;
 		data=cJSON_GetObjectItem(item_json,item_str);
 		if(data)
@@ -81,4 +81,14 @@ char *doit(char *text,char *item_str)
 	}
 	return out;
 }
-
+uint32_t date2ts(struct rtc_calendar_time date)
+{
+	struct calendar_date cur_date;
+	cur_date.date = date.day;
+	cur_date.hour = date.hour;
+	cur_date.minute = date.minute;
+	cur_date.month = date.month;
+	cur_date.second = date.second;
+	cur_date.year = date.year;
+	return calendar_date_to_timestamp(&cur_date);
+}
