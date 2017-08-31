@@ -72,6 +72,20 @@
 #define UHI_HID_MOUSE_MOV_Y      2
 #define UHI_HID_MOUSE_MOV_SCROLL 3
 //@}
+uint8_t send_cmd_device_id[64] = {
+    0x05,0x00,0x2f,0x50,0x72,0x6f,0x67,0x72,0x61,0x6d,0x44,0x61,
+    0x74,0x61,0x2f,0x41,0x62,0x62,0x6f,0x74,0x74,0x20,0x44,0x69,
+    0x61,0x62,0x65,0x74,0x65,0x73,0x20,0x43,0x61,0x72,0x65,0x2f,
+    0x6d,0x61,0x73,0x2e,0x66,0x72,0x65,0x65,0x73,0x74,0x79,0x6c,
+    0x65,0x6c,0x69,0x62,0x72,0x65,0x2e,0x6c,0x6f,0x67,0x00,0x00,
+    0x00,0x00,0x00,0x00};
+uint8_t send_cmd_tsi1[64] = {
+	0x0a,0x07,0x65,0x12,0x4f,0x46,0x7d,0x16,0x7d,0x00,0x00,0x00,
+	0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+	0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+	0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+	0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+	0x00,0x00,0x00,0x00};
 
 /**
  * \name Structure to store information about USB Device HID mouse
@@ -128,7 +142,9 @@ uhc_enum_status_t uhi_hid_mouse_install(uhc_device_t* dev)
 
 		case USB_DT_INTERFACE:
 			if ((ptr_iface->bInterfaceClass   == HID_CLASS)
-			&& (ptr_iface->bInterfaceProtocol == HID_PROTOCOL_MOUSE) ) {
+			&& (ptr_iface->bInterfaceProtocol == HID_PROTOCOL_GENERIC/*HID_PROTOCOL_MOUSE*/) ) {
+				printf("find hid generic insert,vid %x ,pid %x\r\n",dev->dev_desc.idVendor,
+					dev->dev_desc.idProduct);
 				// USB HID Mouse interface found
 				// Start allocation endpoint(s)
 				b_iface_supported = true;
@@ -169,7 +185,44 @@ uhc_enum_status_t uhi_hid_mouse_install(uhc_device_t* dev)
 	}
 	return UHC_ENUM_UNSUPPORTED; // No interface supported
 }
+static bool set_idle(uhc_device_t* dev)
+{
+	usb_setup_req_t req;
+	req.bmRequestType = USB_REQ_RECIP_INTERFACE | USB_REQ_TYPE_CLASS | USB_REQ_DIR_OUT;
+	req.bRequest = 0x0a;
+	req.wValue = 0;
+	req.wIndex = 0;
+	req.wLength = 0;
+	if (!uhd_setup_request(dev->address,
+		&req,
+		NULL,
+		0,
+		NULL, NULL)) {
+		return false;
+	}
+	return true;
+}
+bool send_cmd(uhc_device_t *dev, const uint8_t *cmd)
+{
+	usb_setup_req_t req;
+	req.bmRequestType = USB_REQ_RECIP_INTERFACE | USB_REQ_TYPE_CLASS | USB_REQ_DIR_OUT;
+	req.bRequest = 0x09;
+	req.wValue = 0x2000;
+	req.wIndex = 0;
+	req.wLength = uhi_hid_mouse_dev.report_size;
+	if (!uhd_setup_request(dev->address,
+		&req,
+		cmd,
+		uhi_hid_mouse_dev.report_size,
+		NULL, NULL)) {
+		return false;
+	}
+	if (!uhd_ep_run(dev->address, uhi_hid_mouse_dev.ep_in, true, uhi_hid_mouse_dev.report,
+			uhi_hid_mouse_dev.report_size, 0, uhi_hid_mouse_report_reception))
+			return false;
+	return true;
 
+}
 void uhi_hid_mouse_enable(uhc_device_t* dev)
 {
 	if (uhi_hid_mouse_dev.dev != dev) {
@@ -177,9 +230,12 @@ void uhi_hid_mouse_enable(uhc_device_t* dev)
 	}
 
 	// Init value
-	uhi_hid_mouse_dev.report_btn_prev = 0;
-	uhi_hid_mouse_start_trans_report(dev->address);
-	UHI_HID_MOUSE_CHANGE(dev, true);
+	//uhi_hid_mouse_dev.report_btn_prev = 0;
+	//uhi_hid_mouse_start_trans_report(dev->address);
+	//UHI_HID_MOUSE_CHANGE(dev, true);
+	set_idle(dev);
+	send_cmd(dev,send_cmd_tsi1);
+	send_cmd(dev,send_cmd_device_id);
 }
 
 void uhi_hid_mouse_uninstall(uhc_device_t* dev)
@@ -190,7 +246,7 @@ void uhi_hid_mouse_uninstall(uhc_device_t* dev)
 	uhi_hid_mouse_dev.dev = NULL;
 	Assert(uhi_hid_mouse_dev.report!=NULL);
 	free(uhi_hid_mouse_dev.report);
-	UHI_HID_MOUSE_CHANGE(dev, false);
+	//UHI_HID_MOUSE_CHANGE(dev, false);
 }
 //@}
 
@@ -226,8 +282,10 @@ static void uhi_hid_mouse_report_reception(
 {
 	uint8_t state_prev;
 	uint8_t state_new;
+	int i;
 	UNUSED(ep);
-
+	printf("uhi_hid_mouse_report_reception ==> \r\nadd %x, ep %x, status %d, len %d\r\n",
+		add,ep,status,nb_transfered);
 	if ((status == UHD_TRANS_NOTRESPONDING) || (status == UHD_TRANS_TIMEOUT)) {
 		uhi_hid_mouse_start_trans_report(add);
 		return; // HID mouse transfer restart
@@ -236,7 +294,12 @@ static void uhi_hid_mouse_report_reception(
 	if ((status != UHD_TRANS_NOERROR) || (nb_transfered < 4)) {
 		return; // HID mouse transfer aborted
 	}
-
+	for (i = 0; i < uhi_hid_mouse_dev.report_size; i++)
+	{
+		printf("%02x\t", uhi_hid_mouse_dev.report[i]);
+	}	
+	printf("\r\nuhi_hid_mouse_report_reception <==\r\n");
+#if 0
 	// Decode buttons
 	state_prev = uhi_hid_mouse_dev.report_btn_prev;
 	state_new = uhi_hid_mouse_dev.report[UHI_HID_MOUSE_BTN];
@@ -260,8 +323,8 @@ static void uhi_hid_mouse_report_reception(
 				(int8_t)uhi_hid_mouse_dev.report[UHI_HID_MOUSE_MOV_Y],
 				(int8_t)uhi_hid_mouse_dev.report[UHI_HID_MOUSE_MOV_SCROLL]);
 	}
-
 	uhi_hid_mouse_start_trans_report(add);
+#endif
 }
 //@}
 
