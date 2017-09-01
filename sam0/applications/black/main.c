@@ -8,7 +8,7 @@
 #include "usb.h"
 #include "rtc.h"
 #include "flash.h"
-
+extern bool libre_found;
 #if CONSOLE_OUTPUT_ENABLED
 #define APP_HEADER "samd21 black box\r\n"
 #endif
@@ -41,18 +41,32 @@ static void black_system_init(void)
 	/* Initialize the console */
 	console_init();
 	/* Wait stdio stable */
+	delay_init();
 	delay_ms(5);
 	/* Print a header */
 	printf(APP_HEADER);
 #endif
 	/* Enable the global interrupts */
 	cpu_irq_enable();
-	ui_init();
+	//ui_init();
 	/* Start USB host stack */
 	uhc_start();
 	gprs_config();
 }
 
+void ui_usb_connection_event(uhc_device_t *dev, bool b_present)
+{
+	UNUSED(dev);
+	if (!b_present) {
+		libre_found = false;		
+	}
+}
+//bool usb_sleeping = false;
+void ui_usb_wakeup_event(void)
+{
+	printf("usb wakeup event\r\n");
+	//usb_sleeping = false;
+}
 
 int main(void)
 {
@@ -82,7 +96,17 @@ int main(void)
 	test_gprs();
 	while (true) {
 		//get_rtc_time(&time);
-		
+		if (libre_found) {
+			//uhc_resume();
+			//while(usb_sleeping);
+			//printf("begin to get cap\r\n");
+			get_cap_data();
+			//delay_s(2);
+			//printf("begin to sleep usb\r\n");
+			//if (!uhc_is_suspend())
+			//	uhc_suspend(true);
+			//usb_sleeping = true;
+		}
 		sleepmgr_enter_sleep();
 	}
 }

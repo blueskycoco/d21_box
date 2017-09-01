@@ -48,30 +48,13 @@
 #include "usb_protocol.h"
 #include "uhd.h"
 #include "uhc.h"
-#include "uhi_hid_mouse.h"
+#include "uhi_hid_generic.h"
 #include <string.h>
-
+bool libre_found = false;
 #ifdef USB_HOST_HUB_SUPPORT
 # error USB HUB support is not implemented on UHI mouse
 #endif
 
-/**
- * \ingroup uhi_hid_mouse_group
- * \defgroup uhi_hid_mouse_group_internal Implementation of UHI HID Mouse
- *
- * Class internal implementation
- * @{
- */
-
-/**
- * \name Index in HID report for usual HID mouse events
- * @{
- */
-#define UHI_HID_MOUSE_BTN        0
-#define UHI_HID_MOUSE_MOV_X      1
-#define UHI_HID_MOUSE_MOV_Y      2
-#define UHI_HID_MOUSE_MOV_SCROLL 3
-//@}
 uint8_t send_cmd_device_id[64] = {
     0x05,0x00,0x2f,0x50,0x72,0x6f,0x67,0x72,0x61,0x6d,0x44,0x61,
     0x74,0x61,0x2f,0x41,0x62,0x62,0x6f,0x74,0x74,0x20,0x44,0x69,
@@ -86,52 +69,34 @@ uint8_t send_cmd_tsi1[64] = {
 	0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
 	0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
 	0x00,0x00,0x00,0x00};
-
-/**
- * \name Structure to store information about USB Device HID mouse
- */
-//@{
+uint8_t cur_libre_serial_no[32] = {0};
 typedef struct {
 	uhc_device_t *dev;
 	usb_ep_t ep_in;
 	uint8_t report_size;
 	uint8_t *report;
-	uint8_t report_btn_prev;
-}uhi_hid_mouse_dev_t;
+}uhi_hid_generic_dev_t;
 
-static uhi_hid_mouse_dev_t uhi_hid_mouse_dev = {
+static uhi_hid_generic_dev_t uhi_hid_generic_dev = {
 	.dev = NULL,
 	.report = NULL,
 	};
 
-//@}
-
-
-/**
- * \name Internal routines
- */
-//@{
-static void uhi_hid_mouse_start_trans_report(usb_add_t add);
-static void uhi_hid_mouse_report_reception(
+static void uhi_hid_generic_start_trans_report(usb_add_t add);
+static void uhi_hid_generic_report_reception(
 		usb_add_t add,
 		usb_ep_t ep,
 		uhd_trans_status_t status,
 		iram_size_t nb_transfered);
-//@}
 
 
-/**
- * \name Functions required by UHC
- * @{
- */
-
-uhc_enum_status_t uhi_hid_mouse_install(uhc_device_t* dev)
+uhc_enum_status_t uhi_hid_generic_install(uhc_device_t* dev)
 {
 	bool b_iface_supported;
 	uint16_t conf_desc_lgt;
 	usb_iface_desc_t *ptr_iface;
 
-	if (uhi_hid_mouse_dev.dev != NULL) {
+	if (uhi_hid_generic_dev.dev != NULL) {
 		return UHC_ENUM_SOFTWARE_LIMIT; // Device already allocated
 	}
 	conf_desc_lgt = le16_to_cpu(dev->conf_desc->wTotalLength);
@@ -163,15 +128,15 @@ uhc_enum_status_t uhi_hid_mouse_install(uhc_device_t* dev)
 				return UHC_ENUM_HARDWARE_LIMIT; // Endpoint allocation fail
 			}
 			Assert(((usb_ep_desc_t*)ptr_iface)->bEndpointAddress & USB_EP_DIR_IN);
-			uhi_hid_mouse_dev.ep_in = ((usb_ep_desc_t*)ptr_iface)->bEndpointAddress;
-			uhi_hid_mouse_dev.report_size =
+			uhi_hid_generic_dev.ep_in = ((usb_ep_desc_t*)ptr_iface)->bEndpointAddress;
+			uhi_hid_generic_dev.report_size =
 					le16_to_cpu(((usb_ep_desc_t*)ptr_iface)->wMaxPacketSize);
-			uhi_hid_mouse_dev.report = malloc(uhi_hid_mouse_dev.report_size);
-			if (uhi_hid_mouse_dev.report == NULL) {
+			uhi_hid_generic_dev.report = malloc(uhi_hid_generic_dev.report_size);
+			if (uhi_hid_generic_dev.report == NULL) {
 				Assert(false);
 				return UHC_ENUM_MEMORY_LIMIT; // Internal RAM allocation fail
 			}
-			uhi_hid_mouse_dev.dev = dev;
+			uhi_hid_generic_dev.dev = dev;
 			// All endpoints of all interfaces supported allocated
 			return UHC_ENUM_SUCCESS;
 
@@ -209,72 +174,68 @@ bool send_cmd(uhc_device_t *dev, const uint8_t *cmd)
 	req.bRequest = 0x09;
 	req.wValue = 0x2000;
 	req.wIndex = 0;
-	req.wLength = uhi_hid_mouse_dev.report_size;
+	req.wLength = uhi_hid_generic_dev.report_size;
 	if (!uhd_setup_request(dev->address,
 		&req,
 		cmd,
-		uhi_hid_mouse_dev.report_size,
+		uhi_hid_generic_dev.report_size,
 		NULL, NULL)) {
 		return false;
 	}
-	if (!uhd_ep_run(dev->address, uhi_hid_mouse_dev.ep_in, true, uhi_hid_mouse_dev.report,
-			uhi_hid_mouse_dev.report_size, 0, uhi_hid_mouse_report_reception))
-			return false;
 	return true;
 
 }
-void uhi_hid_mouse_enable(uhc_device_t* dev)
+bool get_cap_data()
+{	
+	usb_setup_req_t req;
+	req.bmRequestType = USB_REQ_RECIP_INTERFACE | USB_REQ_TYPE_CLASS | USB_REQ_DIR_OUT;
+	req.bRequest = 0x09;
+	req.wValue = 0x2000;
+	req.wIndex = 0;
+	req.wLength = uhi_hid_generic_dev.report_size;
+	if (!uhd_setup_request(uhi_hid_generic_dev.dev->address,
+		&req,
+		send_cmd_device_id,
+		uhi_hid_generic_dev.report_size,
+		NULL, NULL)) {
+		printf("get cap data failed\r\n");	
+		return false;
+	}
+	printf("get cap data done\r\n");	
+	uhi_hid_generic_start_trans_report(uhi_hid_generic_dev.dev->address);
+	return true;
+}
+void uhi_hid_generic_enable(uhc_device_t* dev)
 {
-	if (uhi_hid_mouse_dev.dev != dev) {
+	if (uhi_hid_generic_dev.dev != dev) {
 		return;  // No interface to enable
 	}
 
-	// Init value
-	//uhi_hid_mouse_dev.report_btn_prev = 0;
-	//uhi_hid_mouse_start_trans_report(dev->address);
-	//UHI_HID_MOUSE_CHANGE(dev, true);
-	set_idle(dev);
-	send_cmd(dev,send_cmd_tsi1);
-	send_cmd(dev,send_cmd_device_id);
+	set_idle(dev);	
+	libre_found = true;
+	//send_cmd(dev,send_cmd_device_id);
+	//uhi_hid_generic_start_trans_report(dev->address);
 }
 
-void uhi_hid_mouse_uninstall(uhc_device_t* dev)
+void uhi_hid_generic_uninstall(uhc_device_t* dev)
 {
-	if (uhi_hid_mouse_dev.dev != dev) {
+	if (uhi_hid_generic_dev.dev != dev) {
 		return; // Device not enabled in this interface
 	}
-	uhi_hid_mouse_dev.dev = NULL;
-	Assert(uhi_hid_mouse_dev.report!=NULL);
-	free(uhi_hid_mouse_dev.report);
-	//UHI_HID_MOUSE_CHANGE(dev, false);
+	uhi_hid_generic_dev.dev = NULL;
+	Assert(uhi_hid_generic_dev.report!=NULL);
+	free(uhi_hid_generic_dev.report);
 }
-//@}
-
-/**
- * \name Internal routines
- */
-//@{
-
-/**
- * \brief Starts the reception of the HID mouse report
- *
- * \param add   USB address to use
- */
-static void uhi_hid_mouse_start_trans_report(usb_add_t add)
+static void uhi_hid_generic_start_trans_report(usb_add_t add)
 {
 	// Start transfer on interrupt endpoint IN
-	uhd_ep_run(add, uhi_hid_mouse_dev.ep_in, true, uhi_hid_mouse_dev.report,
-			uhi_hid_mouse_dev.report_size, 0, uhi_hid_mouse_report_reception);
+	bool ret = uhd_ep_run(add, uhi_hid_generic_dev.ep_in, true, uhi_hid_generic_dev.report,
+			uhi_hid_generic_dev.report_size, 0, uhi_hid_generic_report_reception);
+	if (!ret)
+		printf("uhd ep run failed\r\n");
 }
 
-/**
- * \brief Decodes the HID mouse report received
- *
- * \param add           USB address used by the transfer
- * \param status        Transfer status
- * \param nb_transfered Number of data transfered
- */
-static void uhi_hid_mouse_report_reception(
+static void uhi_hid_generic_report_reception(
 		usb_add_t add,
 		usb_ep_t ep,
 		uhd_trans_status_t status,
@@ -284,48 +245,34 @@ static void uhi_hid_mouse_report_reception(
 	uint8_t state_new;
 	int i;
 	UNUSED(ep);
-	printf("uhi_hid_mouse_report_reception ==> \r\nadd %x, ep %x, status %d, len %d\r\n",
+	printf("uhi_hid_generic_report_reception ==> \r\nadd %x, ep %x, status %d, len %d\r\n",
 		add,ep,status,nb_transfered);
 	if ((status == UHD_TRANS_NOTRESPONDING) || (status == UHD_TRANS_TIMEOUT)) {
-		uhi_hid_mouse_start_trans_report(add);
+		uhi_hid_generic_start_trans_report(add);
 		return; // HID mouse transfer restart
 	}
 
 	if ((status != UHD_TRANS_NOERROR) || (nb_transfered < 4)) {
+		printf("nb transfered < 4 %d\r\n", status);
+		//uhi_hid_generic_start_trans_report(add);
 		return; // HID mouse transfer aborted
 	}
-	for (i = 0; i < uhi_hid_mouse_dev.report_size; i++)
+	for (i = 0; i < uhi_hid_generic_dev.report_size; i++)
 	{
-		printf("%02x\t", uhi_hid_mouse_dev.report[i]);
-	}	
-	printf("\r\nuhi_hid_mouse_report_reception <==\r\n");
-#if 0
-	// Decode buttons
-	state_prev = uhi_hid_mouse_dev.report_btn_prev;
-	state_new = uhi_hid_mouse_dev.report[UHI_HID_MOUSE_BTN];
-	if ((state_prev & 0x01) != (state_new & 0x01)) {
-		UHI_HID_MOUSE_EVENT_BTN_LEFT((state_new & 0x01) ? true : false);
+		printf("%02x\t", uhi_hid_generic_dev.report[i]);
 	}
-	if ((state_prev & 0x02) != (state_new & 0x02)) {
-		UHI_HID_MOUSE_EVENT_BTN_RIGHT((state_new & 0x02) ? true : false);
+	printf("\r\n");
+	//add more code here to parse cap data, ts, database etc
+	if (uhi_hid_generic_dev.report[0] == 0x06)
+	{//cur libre serial no
+		memcpy(cur_libre_serial_no, uhi_hid_generic_dev.report+2, uhi_hid_generic_dev.report[1]);
+		printf("cur libre %s\r\n", cur_libre_serial_no);
+		//libre_found = true;
 	}
-	if ((state_prev & 0x04) != (state_new & 0x04)) {
-		UHI_HID_MOUSE_EVENT_BTN_MIDDLE((state_new & 0x04) ? true : false);
+	else if(uhi_hid_generic_dev.report[0] == 0x07)
+	{//cap data & ts
+		printf("cap data , ts \r\n");
 	}
-	uhi_hid_mouse_dev.report_btn_prev = state_new;
-
-	// Decode moves
-	if ((uhi_hid_mouse_dev.report[UHI_HID_MOUSE_MOV_X] != 0)
-			|| (uhi_hid_mouse_dev.report[UHI_HID_MOUSE_MOV_Y] != 0)
-			|| (uhi_hid_mouse_dev.report[UHI_HID_MOUSE_MOV_SCROLL] != 0)) {
-		UHI_HID_MOUSE_EVENT_MOUVE(
-				(int8_t)uhi_hid_mouse_dev.report[UHI_HID_MOUSE_MOV_X],
-				(int8_t)uhi_hid_mouse_dev.report[UHI_HID_MOUSE_MOV_Y],
-				(int8_t)uhi_hid_mouse_dev.report[UHI_HID_MOUSE_MOV_SCROLL]);
-	}
-	uhi_hid_mouse_start_trans_report(add);
-#endif
+	printf("uhi_hid_generic_report_reception <==\r\n");
+	//uhi_hid_generic_start_trans_report(add);
 }
-//@}
-
-//@}

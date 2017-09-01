@@ -53,7 +53,7 @@ TARGET_SRAM = black_sram.elf
 # List of C source files.
 CSRCS = \
        common/services/sleepmgr/samd/sleepmgr.c           \
-       common/services/usb/class/hid/host/mouse/uhi_hid_mouse.c       \
+       common/services/usb/class/hid/host/generic/uhi_hid_generic.c       \
        common/services/usb/uhc/uhc.c                      \
        common/services/calendar/calendar.c                      \
        common/utils/interrupt/interrupt_sam_nvic.c        \
@@ -64,7 +64,6 @@ CSRCS = \
        sam0/applications/black/misc.c \
        sam0/applications/black/flash.c \
        sam0/applications/black/gprs.c \
-       sam0/applications/black/box_usb.c \
        sam0/boards/samd21_xplained_pro/board_init.c       \
        sam0/drivers/bod/bod_sam_d_r_h/bod.c               \
        sam0/drivers/dma/dma.c                             \
@@ -102,7 +101,7 @@ INC_PATH = \
        common/services/sleepmgr                           \
        common/services/usb                                \
        common/services/usb/class/hid                      \
-       common/services/usb/class/hid/host/mouse                 \
+       common/services/usb/class/hid/host/generic                 \
        common/services/usb/uhc                            \
        common/services/calendar                      \
        common/utils                                       \
