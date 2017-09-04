@@ -95,18 +95,17 @@ int main(void)
 	printf("cur history num: %d\r\n",history_num);
 	test_gprs();
 	while (true) {
-		//get_rtc_time(&time);
 		if (libre_found) {
-			//uhc_resume();
-			//while(usb_sleeping);
-			//printf("begin to get cap\r\n");
-			get_cap_data();
-			//delay_s(2);
-			//printf("begin to sleep usb\r\n");
-			//if (!uhc_is_suspend())
-			//	uhc_suspend(true);
-			//usb_sleeping = true;
+			if (uhc_is_suspend())
+				uhc_resume();
+			if (!uhc_is_suspend())
+			{
+				get_cap_data();
+				printf("suspend usb\r\n");
+				uhc_suspend(false);
+			}
 		}
+		get_rtc_time(&time);		
 		sleepmgr_enter_sleep();
 	}
 }

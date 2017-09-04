@@ -267,7 +267,7 @@ static void uhi_hid_generic_report_reception(
 	{//cur libre serial no
 		memcpy(cur_libre_serial_no, uhi_hid_generic_dev.report+2, uhi_hid_generic_dev.report[1]);
 		printf("cur libre %s\r\n", cur_libre_serial_no);
-		//libre_found = true;
+		//libre_found = true;		
 	}
 	else if(uhi_hid_generic_dev.report[0] == 0x07)
 	{//cap data & ts
