@@ -762,7 +762,8 @@ enum status_code usart_write_buffer_wait(
 enum status_code usart_read_buffer_wait(
 		struct usart_module *const module,
 		uint8_t *rx_data,
-		uint16_t length)
+		uint16_t length,
+		uint16_t *rlen)
 {
 	/* Sanity check arguments */
 	Assert(module);
@@ -807,7 +808,7 @@ enum status_code usart_read_buffer_wait(
 
 		/* Read value will be at least 8-bits long */
 		rx_data[rx_pos++] = received_data;
-
+		*rlen = rx_pos;
 		/* If 9-bit data, write next received byte to the buffer */
 		if (module->character_size == USART_CHARACTER_SIZE_9BIT) {
 			rx_data[rx_pos++] = (received_data >> 8);

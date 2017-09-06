@@ -19,51 +19,65 @@ static void gprs_init(void)
 	usart_serial_init(&gprs_uart_module, CONF_GPRS_USART_MODULE, &usart_conf);
 	usart_enable(&gprs_uart_module);
 }
-static uint8_t gprs_send_cmd(const uint8_t *cmd, int len)
+static uint8_t gprs_send_cmd(const uint8_t *cmd, int len,int need_connect,uint8_t *rcv)
 {
-	uint8_t rcv[32] = {0};
+	uint16_t rlen=0;
 	usart_serial_write_packet(&gprs_uart_module, cmd, len);
-	usart_serial_read_packet(&gprs_uart_module, rcv, 32);
-	printf("gprs rcv %s",rcv);
-	if (strstr(rcv, "OK") != NULL || strstr(rcv, "CONNECT") != NULL)
-		return 1;
-	else
-		printf("there is no response from m26 cmd %s\r\n",rcv);
-	return 0;
+	while(1)
+	{
+		enum status_code ret = usart_serial_read_packet(&gprs_uart_module, rcv, 256, &rlen);
+		if (rlen > 0 && (ret == STATUS_OK || ret == STATUS_ERR_TIMEOUT))
+		{
+			if (need_connect)
+			{
+				if (strstr(rcv, "CONNECT") != NULL)
+					break;					
+				memset(rcv,0,256);
+			}
+			else
+				break;
+		}
+		else
+			delay_us(100);
+	}
+	printf("gprs %d rcv %s\r\n",rlen,rcv);
+	return 1;
 }
 uint8_t gprs_config(void)
 {
 	uint8_t result = 0;
+	uint8_t rcv[256] = {0};
 	const uint8_t qifgcnt[] 	= "AT+QIFGCNT=0\n";
-	const uint8_t qicsgp[] 	= "AT+QICSGP=1,\"CMNET\"\n";
+	const uint8_t qicsgp[] 		= "AT+QICSGP=1,\"CMNET\"\n";
 	const uint8_t qiregapp[] 	= "AT+QIREGAPP\n";
-	const uint8_t qiact[] 	= "AT+QIACT\n";
-	/*const uint8_t qhttpurl[] 	= "AT+QHTTPURL=49,30\n";
-	const uint8_t url[] = "http://stage.weitang.com/sgSugarRecor/upload_json\n";
-	uint8_t qhttpurl[] 	= "AT+QHTTPURL=48,30\n";
-	  uint8_t url[] = "http://www.boyibang.com/sgSugarRecor/upload_json\n";*/	  
-	const uint8_t qhttpurl[] 	= "AT+QHTTPURL=56,30\n";
-	const uint8_t url[] = "http://123.57.26.24:8080/saveData/airmessage/messMgr.do\n";
+	const uint8_t qiact[] 		= "AT+QIACT\n";
+	const uint8_t qistat[] 		= "AT+QISTAT\n";	  
+	const uint8_t qhttpurl[] 	= "AT+QHTTPURL=67,30\n";
+	const uint8_t url[] 		= "http://stage.boyibang.com/weitang/sgSugarRecord/xiaohei/upload_json\n";
 	gprs_init();
 
-	result = gprs_send_cmd(qifgcnt, strlen((const char *)qifgcnt));
+	result = gprs_send_cmd(qifgcnt, strlen((const char *)qifgcnt),0,rcv);
+	memset(rcv,0,256);
 	if (result)
-		result = gprs_send_cmd(qicsgp, strlen((const char *)qicsgp));
+		result = gprs_send_cmd(qicsgp, strlen((const char *)qicsgp),0,rcv);
+	memset(rcv,0,256);
 	if (result)
-		result = gprs_send_cmd(qiregapp, strlen((const char *)qiregapp));
-	//need sleep here
+		result = gprs_send_cmd(qiregapp, strlen((const char *)qiregapp),0,rcv);
+	memset(rcv,0,256);
 	if (result)
-		result = gprs_send_cmd(qiact, strlen((const char *)qiact));
-	//need sleep some seconds to read
+		result = gprs_send_cmd(qistat, strlen((const char *)qistat),0,rcv);
+	memset(rcv,0,256);
+	if (result)
+		result = gprs_send_cmd(qiact, strlen((const char *)qiact),0,rcv);
+
+	memset(rcv,0,256);
 	if (result)
 	{
-		result = gprs_send_cmd(qhttpurl, strlen((const char *)qhttpurl));
+		result = gprs_send_cmd(qhttpurl, strlen((const char *)qhttpurl),1,rcv);
 		if (result)
 		{
-			uint8_t rcv[32] = {0};
-			usart_serial_write_packet(&gprs_uart_module, url, strlen((const char *)url));
-			usart_serial_read_packet(&gprs_uart_module, rcv, 32);
-			printf("url rcv %s\r\n",rcv);
+			memset(rcv,0,256);
+			gprs_send_cmd(url, strlen((const char *)url),0,rcv);
 			if (strstr(rcv, "OK") != NULL)
 				result = 1;
 			else
@@ -77,27 +91,23 @@ uint8_t http_post(uint8_t *data, int len)
 {
 	uint8_t result = 0;
 	uint8_t post_cmd[32] = {0};
-	uint8_t rcv[32] = {0};
-	uint8_t response[16] = {0};
+	uint8_t rcv[256] = {0};
 	const uint8_t read_response[] = "AT+QHTTPREAD=30\n";
-	sprintf((char *)post_cmd, "AT+QHTTPPOST=%d,50,10\n", len);
+	sprintf((char *)post_cmd, "AT+QHTTPPOST=%d,50,10\n", len-1);
 	
-	usart_serial_write_packet(&gprs_uart_module, post_cmd, strlen((const char *)post_cmd));
-	usart_serial_read_packet(&gprs_uart_module, rcv, 32);
-	printf("post cmd rcv %s\r\n",rcv);
+	gprs_send_cmd(post_cmd, strlen((const char *)post_cmd),1,rcv);
+	
 	if (strstr(rcv, "CONNECT") != NULL)
 	{		
-		memset(rcv,0,32);
-		usart_serial_write_packet(&gprs_uart_module, data, len);
-		usart_serial_read_packet(&gprs_uart_module, rcv, 32);
-		printf("data rcv %s\r\n",rcv);
+		memset(rcv,0,256);
+		gprs_send_cmd(data,len,0,rcv);
 		if (strstr(rcv, "OK") != NULL)
 		{
-			result = gprs_send_cmd(read_response, strlen((const char *)read_response));
+			memset(rcv,0,256);
+			result = gprs_send_cmd(read_response, strlen((const char *)read_response),0,rcv);
 			if (result)
 			{
-				usart_serial_read_packet(&gprs_uart_module, response, 16);
-				printf("response: %s \r\n", response);
+				printf("response: %s \r\n", rcv);
 			}
 			else
 				printf("there is no response from m26 3\r\n");
@@ -114,6 +124,7 @@ void test_gprs(void)
 {
 	//{"0":"5","30":"Radar048","35":"","36":"9517"}
 	//"http://123.57.26.24:8080/saveData/airmessage/messMgr.do"
-	char data[] = "{\"0\":\"5\",\"30\":\"Radar048\",\"35\":\"\",\"36\":\"9517\"}";
+	//char data[] = "{\"0\":\"5\",\"30\":\"Radar048\",\"35\":\"\",\"36\":\"9517\"}";
+	char data[] = "{\"data\": [{\"type\": 0,\"bloodSugar\": 6.8,\"actionTime\": 1502038862000,\"gid\": 1},{\"type\": 1,\"bloodSugar\": 6.9,\"actionTime\": 1502038862000,\"gid\": 2}],\"deviceId\": \"foduf3fdlfodf0dfdthffk\"}\n";
 	http_post(data,strlen(data));
 }

@@ -105,7 +105,7 @@ int main(void)
 				uhc_suspend(false);
 			}
 		}
-		get_rtc_time(&time);		
+		//get_rtc_time(&time);		
 		sleepmgr_enter_sleep();
 	}
 }

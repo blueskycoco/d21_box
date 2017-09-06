@@ -139,9 +139,10 @@ static inline enum status_code usart_serial_write_packet(
 static inline enum status_code usart_serial_read_packet(
 		struct usart_module *const module,
 		uint8_t *rx_data,
-		uint16_t length)
+		uint16_t length,
+		uint16_t *rlen)
 {
-	return usart_read_buffer_wait(module, rx_data, length);
+	return usart_read_buffer_wait(module, rx_data, length,rlen);
 }
 
 #ifdef __cplusplus
