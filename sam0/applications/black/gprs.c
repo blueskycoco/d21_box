@@ -30,7 +30,7 @@ static uint8_t gprs_send_cmd(const uint8_t *cmd, int len,int need_connect,uint8_
 		{
 			if (need_connect)
 			{
-				if (strstr(rcv, "CONNECT") != NULL)
+				if (strstr(rcv, "CONNECT") != NULL || strstr(rcv, "OK")!= NULL)
 					break;					
 				memset(rcv,0,256);
 			}
@@ -53,37 +53,45 @@ uint8_t gprs_config(void)
 	const uint8_t qiact[] 		= "AT+QIACT\n";
 	const uint8_t qistat[] 		= "AT+QISTAT\n";	  
 	const uint8_t qhttpurl[] 	= "AT+QHTTPURL=67,30\n";
+	const uint8_t qhttpurl_ask	= "AT+QHTTPURL?\n";
 	const uint8_t url[] 		= "http://stage.boyibang.com/weitang/sgSugarRecord/xiaohei/upload_json\n";
 	gprs_init();
-
-	result = gprs_send_cmd(qifgcnt, strlen((const char *)qifgcnt),0,rcv);
-	memset(rcv,0,256);
-	if (result)
-		result = gprs_send_cmd(qicsgp, strlen((const char *)qicsgp),0,rcv);
-	memset(rcv,0,256);
-	if (result)
-		result = gprs_send_cmd(qiregapp, strlen((const char *)qiregapp),0,rcv);
-	memset(rcv,0,256);
-	if (result)
-		result = gprs_send_cmd(qistat, strlen((const char *)qistat),0,rcv);
-	memset(rcv,0,256);
-	if (result)
-		result = gprs_send_cmd(qiact, strlen((const char *)qiact),0,rcv);
-
-	memset(rcv,0,256);
-	if (result)
-	{
-		result = gprs_send_cmd(qhttpurl, strlen((const char *)qhttpurl),1,rcv);
+	
+	result = gprs_send_cmd(qistat, strlen((const char *)qistat),0,rcv);
+	if (result) {
+		if (strstr(rcv, "IP GPRSACT") == NULL) { 
+			memset(rcv,0,256);
+			result = gprs_send_cmd(qifgcnt, strlen((const char *)qifgcnt),0,rcv);
+			memset(rcv,0,256);
+			if (result)
+				result = gprs_send_cmd(qicsgp, strlen((const char *)qicsgp),0,rcv);
+			memset(rcv,0,256);
+			if (result)
+				result = gprs_send_cmd(qiregapp, strlen((const char *)qiregapp),0,rcv);
+			memset(rcv,0,256);
+			if (result)
+				result = gprs_send_cmd(qiact, strlen((const char *)qiact),1,rcv);
+			}
+		else
+			printf("gprs network already ok\r\n");
+		}
+	
+	
+		memset(rcv,0,256);
 		if (result)
 		{
-			memset(rcv,0,256);
-			gprs_send_cmd(url, strlen((const char *)url),0,rcv);
-			if (strstr(rcv, "OK") != NULL)
-				result = 1;
-			else
-				result = 0;
-		}
-	}
+			result = gprs_send_cmd(qhttpurl, strlen((const char *)qhttpurl),1,rcv);
+			if (result)
+			{
+				memset(rcv,0,256);
+				gprs_send_cmd(url, strlen((const char *)url),0,rcv);
+				if (strstr(rcv, "OK") != NULL)
+					result = 1;
+				else
+					result = 0;
+			}
+		}	
+	
 	return result;
 }
 
