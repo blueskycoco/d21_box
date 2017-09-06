@@ -100,15 +100,22 @@ uint8_t http_post(uint8_t *data, int len)
 	uint8_t result = 0;
 	uint8_t post_cmd[32] = {0};
 	uint8_t rcv[256] = {0};
+	uint8_t send[400] = {0};
+	uint8_t len_string[256] = {0};
+	uint8_t http_header[] = "POST /weitang/sgSugarRecord/xiaohei/upload_json HTTP/1.1\r\nHOST: stage.boyibang.com\r\nAccept: */*\r\nUser-Agent: QUECTEL_MODULE\r\nConnection: Keep-Alive\r\nContent-Type:application/json\r\n";
 	const uint8_t read_response[] = "AT+QHTTPREAD=30\n";
-	sprintf((char *)post_cmd, "AT+QHTTPPOST=%d,50,10\n", len-1);
+	strcpy(send,http_header);
+	sprintf(len_string,"Content-Length:%d\r\n\r\n%s",len-1,data);
+	strcat(send,len_string);
+	sprintf((char *)post_cmd, "AT+QHTTPPOST=%d,50,10\n", strlen(send)-1);
 	
 	gprs_send_cmd(post_cmd, strlen((const char *)post_cmd),1,rcv);
 	
 	if (strstr(rcv, "CONNECT") != NULL)
 	{		
 		memset(rcv,0,256);
-		gprs_send_cmd(data,len,0,rcv);
+		printf("%s",send);
+		gprs_send_cmd(send,strlen(send),0,rcv);
 		if (strstr(rcv, "OK") != NULL)
 		{
 			memset(rcv,0,256);
