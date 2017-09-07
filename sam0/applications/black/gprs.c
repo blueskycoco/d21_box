@@ -102,10 +102,10 @@ uint8_t http_post(uint8_t *data, int len)
 	uint8_t rcv[256] = {0};
 	uint8_t send[400] = {0};
 	uint8_t len_string[256] = {0};
-	uint8_t http_header[] = "POST /weitang/sgSugarRecord/xiaohei/upload_json HTTP/1.1\r\nHOST: stage.boyibang.com\r\nAccept: */*\r\nUser-Agent: QUECTEL_MODULE\r\nConnection: Keep-Alive\r\nContent-Type:application/json\r\n";
+	uint8_t http_header[] = "POST /weitang/sgSugarRecord/xiaohei/upload_json HTTP/1.1\r\nHOST: stage.boyibang.com\r\nAccept: */*\r\nUser-Agent: QUECTEL_MODULE\r\nConnection: Keep-Alive\r\nContent-Type: application/json\r\n";
 	const uint8_t read_response[] = "AT+QHTTPREAD=30\n";
 	strcpy(send,http_header);
-	sprintf(len_string,"Content-Length:%d\r\n\r\n%s",len-1,data);
+	sprintf(len_string,"Content-Length: %d\r\n\r\n\r\n%s",len-1,data);
 	strcat(send,len_string);
 	sprintf((char *)post_cmd, "AT+QHTTPPOST=%d,50,10\n", strlen(send)-1);
 	
