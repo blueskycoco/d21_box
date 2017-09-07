@@ -51,7 +51,8 @@ uint8_t gprs_config(void)
 	const uint8_t qicsgp[] 		= "AT+QICSGP=1,\"CMNET\"\n";
 	const uint8_t qiregapp[] 	= "AT+QIREGAPP\n";
 	const uint8_t qiact[] 		= "AT+QIACT\n";
-	const uint8_t qistat[] 		= "AT+QISTAT\n";	  
+	const uint8_t qistat[] 		= "AT+QISTAT\n";
+	const uint8_t qhttpcfg[] 	= "AT+QHTTPCFG=\"Requestheader\",1\n";	
 	const uint8_t qhttpurl[] 	= "AT+QHTTPURL=67,30\n";
 	const uint8_t qhttpurl_ask	= "AT+QHTTPURL?\n";
 	const uint8_t url[] 		= "http://stage.boyibang.com/weitang/sgSugarRecord/xiaohei/upload_json\n";
@@ -80,6 +81,7 @@ uint8_t gprs_config(void)
 		memset(rcv,0,256);
 		if (result)
 		{
+			gprs_send_cmd(qhttpcfg, strlen((const char *)qhttpcfg),0,rcv);			
 			result = gprs_send_cmd(qhttpurl, strlen((const char *)qhttpurl),1,rcv);
 			if (result)
 			{
@@ -105,27 +107,22 @@ uint8_t http_post(uint8_t *data, int len)
 	uint8_t http_header[] = "POST /weitang/sgSugarRecord/xiaohei/upload_json HTTP/1.1\r\nHOST: stage.boyibang.com\r\nAccept: */*\r\nUser-Agent: QUECTEL_MODULE\r\nConnection: Keep-Alive\r\nContent-Type: application/json\r\n";
 	const uint8_t read_response[] = "AT+QHTTPREAD=30\n";
 	strcpy(send,http_header);
-	sprintf(len_string,"Content-Length: %d\r\n\r\n\r\n%s",len-1,data);
+	sprintf(len_string,"Content-Length: %d\r\n\r\n%s",len,data);
 	strcat(send,len_string);
-	sprintf((char *)post_cmd, "AT+QHTTPPOST=%d,50,10\n", strlen(send)-1);
-	
+	sprintf((char *)post_cmd, "AT+QHTTPPOST=%d,50,10\n", strlen(send));
+	//printf("send len %d\r\n",strlen(send));
+	strcat(send,"\n");
 	gprs_send_cmd(post_cmd, strlen((const char *)post_cmd),1,rcv);
 	
 	if (strstr(rcv, "CONNECT") != NULL)
 	{		
 		memset(rcv,0,256);
-		printf("%s",send);
+		//printf("%s",send);
 		gprs_send_cmd(send,strlen(send),0,rcv);
 		if (strstr(rcv, "OK") != NULL)
 		{
 			memset(rcv,0,256);
-			result = gprs_send_cmd(read_response, strlen((const char *)read_response),0,rcv);
-			if (result)
-			{
-				printf("response: %s \r\n", rcv);
-			}
-			else
-				printf("there is no response from m26 3\r\n");
+			result = gprs_send_cmd(read_response, strlen((const char *)read_response),0,rcv);			
 		}
 		else
 			printf("there is no response from m26 2\r\n");
@@ -140,6 +137,7 @@ void test_gprs(void)
 	//{"0":"5","30":"Radar048","35":"","36":"9517"}
 	//"http://123.57.26.24:8080/saveData/airmessage/messMgr.do"
 	//char data[] = "{\"0\":\"5\",\"30\":\"Radar048\",\"35\":\"\",\"36\":\"9517\"}";
-	char data[] = "{\"data\": [{\"type\": 0,\"bloodSugar\": 6.8,\"actionTime\": 1502038862000,\"gid\": 1},{\"type\": 1,\"bloodSugar\": 6.9,\"actionTime\": 1502038862000,\"gid\": 2}],\"deviceId\": \"foduf3fdlfodf0dfdthffk\"}\n";
+//	char data[] = "{\r\n\"data\": [\r\n{\r\n\"type\": 0,\r\n\"bloodSugar\": 6.8,\r\n\"actionTime\": 1502038862000,\r\n\"gid\": 1\r\n},\r\n{\r\n\"type\": 1,\r\n\"bloodSugar\": 6.9,\r\n\"actionTime\": 1502038862000,\r\n\"gid\": 2\r\n}\r\n],\r\n\"deviceId\": \"foduf3fdlfodf0dfdthffk\"\r\n}\n";
+	char data[] = "{\"data\": [{\"type\": 0,\"bloodSugar\": 6.8,\"actionTime\": 1502038862000,\"gid\": 1},{\"type\": 1,\"bloodSugar\": 6.9,\"actionTime\": 1502038862000,\"gid\": 2}],\"deviceId\": \"foduf3fdlfodf0dfdthffk\"}";
 	http_post(data,strlen(data));
 }

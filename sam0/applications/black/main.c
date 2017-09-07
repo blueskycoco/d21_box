@@ -12,6 +12,12 @@ extern bool libre_found;
 #if CONSOLE_OUTPUT_ENABLED
 #define APP_HEADER "samd21 black box\r\n"
 #endif
+#define DATA 	"data"
+#define TYPE 	"type"
+#define XT 		"bloodSugar"
+#define TS		"actionTime"
+#define GID		"gid"
+#define DID		"device_id"
 static int history_num = 0;
 //COMPILER_WORD_ALIGNED
 //volatile uint8_t buffer[FLASH_BUFFER_SIZE];
