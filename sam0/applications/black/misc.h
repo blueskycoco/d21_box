@@ -1,8 +1,7 @@
 #ifndef _MISC_H
 #define _MISC_H
-char *doit(char *text,char *item_str);
-char *add_item_number(char *old,char *id, double text);
-char *add_item_str(char *old,char *id,char *text);
+void build_json(char *out, char type, int *bloodSugar, int actionTime, int gid, char *device_id);
+uint32_t date2ts(struct rtc_calendar_time date);
 #if CONSOLE_OUTPUT_ENABLED
 void console_init(void);
 #endif

@@ -59,7 +59,6 @@ CSRCS = \
        common/utils/interrupt/interrupt_sam_nvic.c        \
        common2/services/delay/sam0/cycle_counter.c        \
        sam0/applications/black/main.c \
-       sam0/applications/black/cJSON.c \
        sam0/applications/black/rtc.c \
        sam0/applications/black/misc.c \
        sam0/applications/black/flash.c \

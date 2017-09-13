@@ -12,12 +12,6 @@ extern bool libre_found;
 #if CONSOLE_OUTPUT_ENABLED
 #define APP_HEADER "samd21 black box\r\n"
 #endif
-#define DATA 	"data"
-#define TYPE 	"type"
-#define XT 		"bloodSugar"
-#define TS		"actionTime"
-#define GID		"gid"
-#define DID		"device_id"
 static int history_num = 0;
 //COMPILER_WORD_ALIGNED
 //volatile uint8_t buffer[FLASH_BUFFER_SIZE];
@@ -76,9 +70,14 @@ void ui_usb_wakeup_event(void)
 
 int main(void)
 {
+	char json[512] = {0};
 	uint32_t serial_no[4];
 	uint8_t page_data[EEPROM_PAGE_SIZE];	
 	struct rtc_calendar_time time;
+	char type = 0;
+	int bloodSugar[2] = {0};
+	//int actionTime = 0x1234;
+	int gid = 0;
 
 	serial_no[0] = *(uint32_t *)0x0080A00C;
 	serial_no[1] = *(uint32_t *)0x0080A040;
@@ -111,7 +110,15 @@ int main(void)
 				uhc_suspend(false);
 			}
 		}
-		//get_rtc_time(&time);		
+		get_rtc_time(&time);		
+		build_json(json, type, bloodSugar, date2ts(time), gid, device_serial_no);
+		type = 1 - type;
+		bloodSugar[0] +=1;
+		bloodSugar[1] +=2;
+		//actionTime +=1;
+		gid +=1;
+		//if (json != NULL)
+			printf("%s\r\n",json);
 		sleepmgr_enter_sleep();
 	}
 }

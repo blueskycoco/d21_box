@@ -1,13 +1,21 @@
 #include <asf.h>
 #include <stdlib.h>
 #include <string.h>
-#include "cJSON.h"
+//#include "cJSON.h"
 #include "conf_bootloader.h"
 #include "misc.h"
 #include <calendar.h>
 #if CONSOLE_OUTPUT_ENABLED
 #include "conf_uart_serial.h"
 #endif
+
+#define DATA 	"data"
+#define TYPE 	"type"
+#define XT 		"bloodSugar"
+#define TS		"actionTime"
+#define GID		"gid"
+#define DID		"device_id"
+#define JSON "{\"data\": {\"type\": %d,\"bloodSugar\": %d.%d,\"actionTime\": %d,\"gid\": %d},\"deviceId\": \"%s\"}"
 #if CONSOLE_OUTPUT_ENABLED
 /**
  * \brief Initializes the console output
@@ -29,57 +37,53 @@ void console_init(void)
 	usart_enable(&cdc_uart_module);
 }
 #endif
-char *add_item_str(char *old,char *id,char *text)
+void build_json(char *out, char type, int *bloodSugar, int actionTime, int gid, char *device_id)
 {
+#if 1
+	sprintf(out, JSON,type,bloodSugar[0],bloodSugar[1],actionTime,gid,device_id);
+#else
 	cJSON *root;
-	char *out;
-	if(old!=NULL)
-		root=cJSON_Parse(old);
-	else
-		root=cJSON_CreateObject();	
-	cJSON_AddItemToObject(root, id, cJSON_CreateString(text));
-	out=cJSON_PrintUnformatted(root);	
-	cJSON_Delete(root);
-	if(old)
-		free(old);
-	return out;
-}
+	char *out = NULL;
 
-char *add_item_number(char *old,char *id, double text)
-{
-	cJSON *root;
-	char *out;
-	if(old!=NULL)
-		root=cJSON_Parse(old);
-	else
-		root=cJSON_CreateObject();	
-	cJSON_AddItemToObject(root, id, cJSON_CreateNumber(text));
-	out=cJSON_PrintUnformatted(root);	
-	cJSON_Delete(root);
-	if(old)
-		free(old);
-	return out;
-}
-char *doit(char *text,char *item_str)
-{
-	char *out=NULL;cJSON *item_json;
-
-	item_json=cJSON_Parse(text);
-	if (!item_json) {printf("Error data before: [%s]\n",cJSON_GetErrorPtr());}
+	if (old != NULL)
+	{
+		root = cJSON_Parse(old);
+		cJSON *array=cJSON_GetObjectItem(root,DATA);	
+		cJSON *item = cJSON_CreateObject();
+		cJSON_AddItemToObject(item, TYPE, cJSON_CreateBool(type));
+		cJSON_AddItemToObject(item, XT, cJSON_CreateNumber(bloodSugar));
+		cJSON_AddItemToObject(item, TS, cJSON_CreateNumber(actionTime));
+		cJSON_AddItemToObject(item, GID, cJSON_CreateNumber(gid));
+		cJSON_AddItemToArray(array, item);
+		cJSON_ReplaceItemInObject(root,DATA,array);
+		out=cJSON_PrintUnformatted(root);	
+		cJSON_Delete(item);
+		cJSON_Delete(array);
+		cJSON_Delete(root);
+		if(old)
+			free(old);
+	}
 	else
 	{
-		cJSON *data;
-		data=cJSON_GetObjectItem(item_json,item_str);
-		if(data)
-		{
-			int nLen = strlen(data->valuestring);
-			out=(char *)malloc(nLen+1);
-			memset(out,'\0',nLen+1);
-			memcpy(out,data->valuestring,nLen);
-		}
-		cJSON_Delete(item_json);	
+		root = cJSON_CreateObject();
+		cJSON_AddItemToObject(root, DID, cJSON_CreateString(device_id));
+		cJSON *array = cJSON_CreateArray();
+		cJSON *item = cJSON_CreateObject();
+		cJSON_AddItemToObject(item, TYPE, cJSON_CreateBool(type));
+		cJSON_AddItemToObject(item, XT, cJSON_CreateNumber(bloodSugar));
+		cJSON_AddItemToObject(item, TS, cJSON_CreateNumber(actionTime));
+		cJSON_AddItemToObject(item, GID, cJSON_CreateNumber(gid));
+		cJSON_AddItemToArray(array, item);
+		cJSON_AddItemToObject(root, DATA, array);
+		out=cJSON_PrintUnformatted(root);	
+		cJSON_Delete(item);
+		cJSON_Delete(array);
+		cJSON_Delete(root);
+		if(old)
+			free(old);
 	}
 	return out;
+#endif
 }
 uint32_t date2ts(struct rtc_calendar_time date)
 {
