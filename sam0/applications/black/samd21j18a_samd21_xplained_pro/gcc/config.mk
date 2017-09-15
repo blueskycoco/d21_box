@@ -58,10 +58,10 @@ CSRCS = \
        common/services/calendar/calendar.c                      \
        common/utils/interrupt/interrupt_sam_nvic.c        \
        common2/services/delay/sam0/cycle_counter.c        \
+       common2/components/memory/serial_flash/at25dfx/at25dfx.c \
        sam0/applications/black/main.c \
        sam0/applications/black/rtc.c \
        sam0/applications/black/misc.c \
-       sam0/applications/black/flash.c \
        sam0/applications/black/gprs.c \
        sam0/boards/samd21_xplained_pro/board_init.c       \
        sam0/drivers/bod/bod_sam_d_r_h/bod.c               \
@@ -75,13 +75,14 @@ CSRCS = \
        sam0/drivers/sercom/sercom_interrupt.c             \
        sam0/drivers/sercom/usart/usart.c                  \
        sam0/drivers/sercom/usart/usart_interrupt.c        \
+       sam0/drivers/sercom/spi/spi.c                      \
+       sam0/drivers/sercom/spi/spi_interrupt.c            \
        sam0/drivers/rtc/rtc_sam_d_r_h/rtc_calendar_interrupt.c \
        sam0/drivers/system/clock/clock_samd21_r21_da_ha1/clock.c \
        sam0/drivers/system/clock/clock_samd21_r21_da_ha1/gclk.c \
        sam0/drivers/system/interrupt/system_interrupt.c   \
        sam0/drivers/system/pinmux/pinmux.c                \
-       sam0/drivers/system/system.c                       \
-       sam0/services/eeprom/emulator/main_array/eeprom.c  \
+       sam0/drivers/system/system.c						  \
        sam0/drivers/usb/stack_interface/usb_host_uhd.c    \
        sam0/drivers/usb/usb_sam_d_r/usb.c                 \
        sam0/utils/cmsis/samd21/source/gcc/startup_samd21.c \
@@ -106,6 +107,8 @@ INC_PATH = \
        common/utils                                       \
        common2/services/delay                             \
        common2/services/delay/sam0                        \
+       common2/components/memory/serial_flash/at25dfx     \
+       common2/components/memory/serial_flash/at25dfx/hal/spi_polled \
        sam0/applications/black    \
        sam0/applications/black/samd21j18a_samd21_xplained_pro \
        sam0/drivers/bod                                   \
@@ -121,6 +124,7 @@ INC_PATH = \
        sam0/drivers/rtc/rtc_sam_d_r_h                     \
        sam0/drivers/sercom                                \
        sam0/drivers/sercom/usart                          \
+       sam0/drivers/sercom/spi                            \
        sam0/drivers/system                                \
        sam0/drivers/system/clock                          \
        sam0/drivers/system/clock/clock_samd21_r21_da_ha1  \
@@ -199,6 +203,7 @@ CPPFLAGS = \
        -D UHD_ENABLE                                      \
        -D USART_CALLBACK_MODE=true                        \
        -D USB_HOST_LPM_SUPPORT                            \
+       -D SPI_CALLBACK_MODE=true                          \
        -D __SAMD21J18A__								  
 
 # Extra flags to use when linking

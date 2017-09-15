@@ -8,6 +8,8 @@
 #include "usb.h"
 #include "rtc.h"
 #include "flash.h"
+#include "history.h"
+
 extern bool libre_found;
 #if CONSOLE_OUTPUT_ENABLED
 #define APP_HEADER "samd21 black box\r\n"
@@ -51,7 +53,9 @@ static void black_system_init(void)
 	//ui_init();
 	/* Start USB host stack */
 	uhc_start();
-	gprs_config();
+	//gprs_config();
+	if (history_init())
+		printf("load history done\r\n");
 }
 
 void ui_usb_connection_event(uhc_device_t *dev, bool b_present)
@@ -72,20 +76,21 @@ int main(void)
 {
 	char json[512] = {0};
 	uint32_t serial_no[4];
-	uint8_t page_data[EEPROM_PAGE_SIZE];	
+	uint8_t page_data[4096];	
 	struct rtc_calendar_time time;
 	char type = 0;
 	int bloodSugar[2] = {0};
 	//int actionTime = 0x1234;
 	int gid = 0;
-
+	int i;
+	
 	serial_no[0] = *(uint32_t *)0x0080A00C;
 	serial_no[1] = *(uint32_t *)0x0080A040;
 	serial_no[2] = *(uint32_t *)0x0080A044;
 	serial_no[3] = *(uint32_t *)0x0080A048;
 	sprintf(device_serial_no, "%08x%08x%08x%08x",
-		(unsigned)serial_no[0], (unsigned)serial_no[1],
-		(unsigned)serial_no[2], (unsigned)serial_no[3]);
+			(unsigned)serial_no[0], (unsigned)serial_no[1],
+			(unsigned)serial_no[2], (unsigned)serial_no[3]);
 	black_system_init();
 	printf("ID %x %x %x %x \r\n", serial_no[0],
 			serial_no[1], serial_no[2], serial_no[3]);
@@ -93,12 +98,11 @@ int main(void)
 	struct rtc_calendar_time cur_time;
 	get_rtc_time(&cur_time);
 	printf("set time %d\r\n",set_rtc_time(cur_time));
-	configure_eeprom();
-	configure_bod();
-	eeprom_emulator_read_page(0, page_data);
-	history_num = (page_data[0]<<8) | page_data[1];
+//	configure_eeprom();
+	//configure_bod();
+	//eeprom_emulator_read_page(0, page_data);
 	printf("cur history num: %d\r\n",history_num);
-	test_gprs();
+	//test_gprs();
 	while (true) {
 		if (libre_found) {
 			if (uhc_is_suspend())
@@ -118,7 +122,7 @@ int main(void)
 		//actionTime +=1;
 		gid +=1;
 		//if (json != NULL)
-			printf("%s\r\n",json);
+		printf("%s\r\n",json);
 		sleepmgr_enter_sleep();
 	}
 }

@@ -152,5 +152,8 @@
 // From module: USB Host stack core
 #include <uhc.h>
 #include <uhd.h>
+#include <at25dfx.h>
+#include <spi.h>
+#include <spi_interrupt.h>
 
 #endif // ASF_H
