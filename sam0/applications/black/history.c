@@ -57,18 +57,26 @@ uint32_t get_serial_offset(uint8_t *serial, uint8_t len)
 		dev_info[3+len] = 0x10;
 		dev_info[4+len] = 0x00;
 		serial_offset = 0x1000;
-		printf("insert first dev, serial %s, to 0x1000\r\n", serial);
+		printf("insert first dev, serial %s, to 0x1000\r\n", serial);		
+		ret = at25dfx_chip_set_sector_protect(&at25dfx_chip, serial_offset, 
+											 false);
+		if (ret != STATUS_OK) printf("sector protect failed %d\r\n", ret);
+		for (i=0; i<15; i++) {
+			ret = at25dfx_chip_erase_block(&at25dfx_chip, 
+					serial_offset+i*AT25DFX_BLOCK_SIZE_4KB, 
+					AT25DFX_BLOCK_SIZE_4KB);
+			if (ret != STATUS_OK) printf("erase 0x%04x block failed %d\r\n", 
+					serial_offset+i*AT25DFX_BLOCK_SIZE_4KB, ret); 
+		}
 	} else {		
-		for (i = 0; i < dev_info[0]; i++)
-		{
+		for (i = 0; i < dev_info[0]; i++) {
 			printf("dev %d \r\nserial no : ", i);
 			serial_len = dev_info[offset];
 			offset ++;
 			for (j = offset; j < dev_info[offset+serial_len]; j++)
 				printf("%c", dev_info[j]);
 			if (len == serial_len) {
-					if (memcmp(serial, dev_info+offset, len) == 0)
-					{
+					if (memcmp(serial, dev_info+offset, len) == 0) {
 						serial_offset = dev_info[offset+serial_len]<<16 
 							| dev_info[offset+serial_len+1]<<8 
 							| dev_info[offset+serial_len+2];
@@ -94,11 +102,18 @@ uint32_t get_serial_offset(uint8_t *serial, uint8_t len)
 			dev_info[offset] = (serial_offset << 16)&0xff;
 			dev_info[offset+1] = (serial_offset << 8)&0xff;
 			dev_info[offset+2] = serial_offset&0xff;
-			printf("insert %d dev, serial %s, to 0x%03x\r\n", dev_info[0], serial, serial_offset);
-			ret = at25dfx_chip_set_sector_protect(&at25dfx_chip, serial_offset, false);
+			printf("insert %d dev, serial %s, to 0x%03x\r\n", dev_info[0], 
+					serial, serial_offset);
+			ret = at25dfx_chip_set_sector_protect(&at25dfx_chip, serial_offset, 
+												 false);
 			if (ret != STATUS_OK) printf("sector protect failed %d\r\n", ret);
-			ret = at25dfx_chip_erase_block(&at25dfx_chip, serial_offset, AT25DFX_BLOCK_SIZE_4KB);
-			if (ret != STATUS_OK) printf("erase block failed %d\r\n", ret); 
+			for (i=0; i<16; i++) {
+				ret = at25dfx_chip_erase_block(&at25dfx_chip, 
+						serial_offset+i*AT25DFX_BLOCK_SIZE_4KB, 
+						AT25DFX_BLOCK_SIZE_4KB);
+				if (ret != STATUS_OK) printf("erase 0x%04x block failed %d\r\n", 
+						serial_offset+i*AT25DFX_BLOCK_SIZE_4KB, ret); 
+			}
 		}
 	}
 	ret = at25dfx_chip_set_sector_protect(&at25dfx_chip, 0x00000, false);
@@ -119,8 +134,7 @@ uint8_t history_init(void)
 	at25dfx_chip_wake(&at25dfx_chip);
 	if (at25dfx_chip_check_presence(&at25dfx_chip) != STATUS_OK) 
 		printf("spi flash not exist\r\n");
-	else
-	{
+	else {
 		printf("found spi flash\r\n");
 		ret = 1;
 	}
@@ -129,11 +143,13 @@ uint8_t history_init(void)
 
 void test_flash(void)
 {
-	enum status_code ret = at25dfx_chip_read_buffer(&at25dfx_chip, 0x0000, dev_info, 4096);
+	enum status_code ret = at25dfx_chip_read_buffer(&at25dfx_chip, 0x0000, 
+			dev_info, 4096);
 	if (ret != STATUS_OK) printf("read buffer failed %d\r\n", ret);
 	ret = at25dfx_chip_set_sector_protect(&at25dfx_chip, 0x00000, false);
 	if (ret != STATUS_OK) printf("sector protect failed %d\r\n", ret);
-	ret = at25dfx_chip_erase_block(&at25dfx_chip, 0x00000, AT25DFX_BLOCK_SIZE_4KB);
+	ret = at25dfx_chip_erase_block(&at25dfx_chip, 0x00000, 
+			AT25DFX_BLOCK_SIZE_4KB);
 	if (ret != STATUS_OK) printf("erase block failed %d\r\n", ret);	
 	for (i=0; i<4096; i++) 
 		dev_info[i] = i%256;
