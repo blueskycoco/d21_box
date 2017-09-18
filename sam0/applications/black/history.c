@@ -34,22 +34,23 @@ uint32_t get_serial_offset(uint8_t *serial, uint8_t len)
 {
 	uint8_t serial_len = 0;
 	uint32_t serial_offset = 0;
-	uint32_t offset = 1;	
+	uint32_t offset = 1;
+	bool update_first_4k = true;
 	int i =0, j=0;
 	uint8_t found = 0;
 	enum status_code ret = STATUS_OK;
 	
 	ret = at25dfx_chip_wake(&at25dfx_chip);
-	if (ret != STATUS_OK) { printf("spi wake failed\r\n"); return;}
+	if (ret != STATUS_OK) { printf("spi wake failed\r\n"); return ret;}
 	
 	ret = at25dfx_chip_read_buffer(&at25dfx_chip, 0x0000, dev_info, 4096);
 	if (ret != STATUS_OK) { 
 		printf("spi wake failed\r\n"); 
 		at25dfx_chip_sleep(&at25dfx_chip); 
-		return;
+		return ret;
 	}
 	printf("%d sugar devices\r\n", dev_info[0]);
-	if (dev_info[0] == 0) {
+	if (dev_info[0] == 0xff) {/*the spi flash first in use*/
 		dev_info[0] = 1;
 		dev_info[1] = len;
 		memcpy(dev_info + 2, serial,len);
@@ -82,6 +83,7 @@ uint32_t get_serial_offset(uint8_t *serial, uint8_t len)
 							| dev_info[offset+serial_len+2];
 						printf("found our dev offset 0x%03x\r\n", serial_offset);
 						found = 1;
+						update_first_4k = false;
 						break;
 					}
 			}
@@ -93,39 +95,76 @@ uint32_t get_serial_offset(uint8_t *serial, uint8_t len)
 			printf("\r\n");
 		}
 
-		if (!found) {
+		if (!found) {/*new sugar insert*/
 			dev_info[0] +=1;
-			dev_info[offset++] = len;			
-			memcpy(dev_info + offset, serial,len);
-			offset += len;
-			serial_offset = dev_info[0] * 64 * 1024;
-			dev_info[offset] = (serial_offset << 16)&0xff;
-			dev_info[offset+1] = (serial_offset << 8)&0xff;
-			dev_info[offset+2] = serial_offset&0xff;
-			printf("insert %d dev, serial %s, to 0x%03x\r\n", dev_info[0], 
-					serial, serial_offset);
-			ret = at25dfx_chip_set_sector_protect(&at25dfx_chip, serial_offset, 
-												 false);
-			if (ret != STATUS_OK) printf("sector protect failed %d\r\n", ret);
-			for (i=0; i<16; i++) {
+			if (dev_info[0] == 16)
+			{	/*exceed max count*/
+				offset = 1;
+				dev_info[0] = 1;
+				dev_info[1] = len;
+				memcpy(dev_info + 2, serial,len);
+				dev_info[2+len] = 0x00;
+				dev_info[3+len] = 0x10;
+				dev_info[4+len] = 0x00;
+				serial_offset = 0x1000;
+				printf("insert first dev, serial %s, to 0x1000\r\n", serial);		
+				ret = at25dfx_chip_set_sector_protect(&at25dfx_chip, 
+														serial_offset, false);
+				if (ret != STATUS_OK) printf("sector protect failed %d\r\n", 
+											ret);
+				for (i=0; i<15; i++) {
 				ret = at25dfx_chip_erase_block(&at25dfx_chip, 
+					serial_offset+i*AT25DFX_BLOCK_SIZE_4KB, 
+					AT25DFX_BLOCK_SIZE_4KB);
+				if (ret != STATUS_OK) printf("erase 0x%04x block failed %d\r\n", 
+					serial_offset+i*AT25DFX_BLOCK_SIZE_4KB, ret); 
+				}
+			}
+			else
+			{	/*increase one instance*/
+				dev_info[offset++] = len;			
+				memcpy(dev_info + offset, serial,len);
+				offset += len;
+				serial_offset = dev_info[0] * 64 * 1024;
+				dev_info[offset] = (serial_offset << 16)&0xff;
+				dev_info[offset+1] = (serial_offset << 8)&0xff;
+				dev_info[offset+2] = serial_offset&0xff;
+				printf("insert %d dev, serial %s, to 0x%03x\r\n", dev_info[0], 
+					serial, serial_offset);
+				ret = at25dfx_chip_set_sector_protect(&at25dfx_chip, 
+														serial_offset, false);
+				if (ret != STATUS_OK) printf("sector protect failed %d\r\n",ret);
+				for (i=0; i<16; i++) {
+					ret = at25dfx_chip_erase_block(&at25dfx_chip, 
 						serial_offset+i*AT25DFX_BLOCK_SIZE_4KB, 
 						AT25DFX_BLOCK_SIZE_4KB);
-				if (ret != STATUS_OK) printf("erase 0x%04x block failed %d\r\n", 
-						serial_offset+i*AT25DFX_BLOCK_SIZE_4KB, ret); 
+					if (ret != STATUS_OK) 
+						printf("erase 0x%04x block failed %d\r\n", 
+								serial_offset+i*AT25DFX_BLOCK_SIZE_4KB, ret); 
+				}
 			}
 		}
 	}
-	ret = at25dfx_chip_set_sector_protect(&at25dfx_chip, 0x00000, false);
-	if (ret != STATUS_OK) printf("sector protect failed %d\r\n", ret);
-	for (i=0; i<4096/256; i++)
-	{
-		ret = at25dfx_chip_write_buffer(&at25dfx_chip, i*256, dev_info+256, 256);
-		if (ret != STATUS_OK) printf("write buffer failed %d\r\n", ret);	
+
+	if (update_first_4k) {
+		/*update first 4k zone*/
+		ret = at25dfx_chip_set_sector_protect(&at25dfx_chip, 0x00000, false);
+		if (ret != STATUS_OK) printf("sector protect failed %d\r\n", ret);
+		ret = at25dfx_chip_erase_block(&at25dfx_chip, 0, AT25DFX_BLOCK_SIZE_4KB);
+		if (ret != STATUS_OK) printf("erase 0 block failed %d\r\n", ret); 
+		for (i=0; i<4096/256; i++)
+		{
+			ret = at25dfx_chip_write_buffer(&at25dfx_chip, i*256, dev_info+256, 
+											256);
+			if (ret != STATUS_OK) printf("write buffer failed %d\r\n", ret);	
+		}
+		ret = at25dfx_chip_set_global_sector_protect(&at25dfx_chip, true);
 	}
-	ret = at25dfx_chip_set_global_sector_protect(&at25dfx_chip, true);
+	
 	if (ret != STATUS_OK) printf("global sector protect failed %d\r\n", ret);
 	at25dfx_chip_sleep(&at25dfx_chip); 
+
+	return serial_offset;
 }
 uint8_t history_init(void)
 {
