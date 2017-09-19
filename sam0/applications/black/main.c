@@ -70,12 +70,17 @@ void ui_usb_wakeup_event(void)
 
 int main(void)
 {
+#if 0
 	char json[512] = {0};
+#else
+	char *json = NULL;
+#endif
 	uint32_t serial_no[4];
 	uint8_t page_data[EEPROM_PAGE_SIZE];	
 	struct rtc_calendar_time time;
 	char type = 0;
-	int bloodSugar[2] = {0};
+//	int bloodSugar[2] = {0};
+	float bloodSugar =0.1f;
 	//int actionTime = 0x1234;
 	int gid = 0;
 
@@ -111,13 +116,15 @@ int main(void)
 			}
 		}
 		get_rtc_time(&time);		
-		build_json(json, type, bloodSugar, date2ts(time), gid, device_serial_no);
+
+		json = build_json(json, type, bloodSugar, date2ts(time), gid, device_serial_no);
 		type = 1 - type;
-		bloodSugar[0] +=1;
-		bloodSugar[1] +=2;
+		//bloodSugar[0] +=1;
+		//bloodSugar[1] +=2;
+		bloodSugar += 0.1f;
 		//actionTime +=1;
 		gid +=1;
-		//if (json != NULL)
+		if (json != NULL)
 			printf("%s\r\n",json);
 		sleepmgr_enter_sleep();
 	}

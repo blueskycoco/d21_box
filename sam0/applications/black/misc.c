@@ -1,7 +1,7 @@
 #include <asf.h>
 #include <stdlib.h>
 #include <string.h>
-//#include "cJSON.h"
+#include "cJSON.h"
 #include "conf_bootloader.h"
 #include "misc.h"
 #include <calendar.h>
@@ -37,11 +37,13 @@ void console_init(void)
 	usart_enable(&cdc_uart_module);
 }
 #endif
+#if 0
 void build_json(char *out, char type, int *bloodSugar, int actionTime, int gid, char *device_id)
 {
-#if 1
 	sprintf(out, JSON,type,bloodSugar[0],bloodSugar[1],actionTime,gid,device_id);
 #else
+char *build_json(char *old, char type, float bloodSugar, int actionTime, int gid, char *device_id)
+{
 	cJSON *root;
 	char *out = NULL;
 
