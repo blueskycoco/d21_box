@@ -15,7 +15,8 @@
 #define TS		"actionTime"
 #define GID		"gid"
 #define DID		"device_id"
-#define JSON "{\"data\": {\"type\": %d,\"bloodSugar\": %d.%d,\"actionTime\": %d,\"gid\": %d},\"deviceId\": \"%s\"}"
+#define JSON "{\"data\": {\"type\": %d,\"bloodSugar\": %d.%d,\"actionTime\": %d,\
+			 "gid\": %d},\"deviceId\": \"%s\"}"
 #if CONSOLE_OUTPUT_ENABLED
 /**
  * \brief Initializes the console output
@@ -37,7 +38,8 @@ void console_init(void)
 	usart_enable(&cdc_uart_module);
 }
 #endif
-void build_json(char *out, char type, int *bloodSugar, int actionTime, int gid, char *device_id)
+void build_json(char *out, char type, int *bloodSugar, int actionTime, int gid, 
+				char *device_id)
 {
 #if 1
 	sprintf(out, JSON,type,bloodSugar[0],bloodSugar[1],actionTime,gid,device_id);
