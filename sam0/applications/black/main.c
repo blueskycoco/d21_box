@@ -74,7 +74,7 @@ void ui_usb_wakeup_event(void)
 
 int main(void)
 {
-	char json[512] = {0};
+	char *json = NULL;
 	uint32_t serial_no[4];
 	uint8_t page_data[4096]={0};	
 	struct rtc_calendar_time time;
@@ -114,8 +114,11 @@ int main(void)
 				uhc_suspend(false);
 			}
 		}
-		get_rtc_time(&time);		
-		build_json(json, type, bloodSugar, date2ts(time), gid, device_serial_no);
+		get_rtc_time(&time);	
+		sprintf(page_data,"%d.%d",bloodSugar[0],bloodSugar[1]);
+		json = build_json(json, type, page_data, date2ts(time), gid, device_serial_no);
+		if (json != NULL)
+		printf("%s\r\n",json);
 		type = 1 - type;
 		bloodSugar[0] +=1;
 		bloodSugar[1] +=2;
@@ -130,8 +133,7 @@ int main(void)
 		else			
 			sprintf(page_data, "hello test %d", gid);
 		printf("offset %d\r\n",get_dev_ts(page_data,strlen(page_data)));
-		//if (json != NULL)
-		printf("%s\r\n",json);
+		
 		sleepmgr_enter_sleep();
 	}
 }

@@ -1,7 +1,7 @@
 #include <asf.h>
 #include <stdlib.h>
 #include <string.h>
-//#include "cJSON.h"
+#include "cJSON.h"
 #include "conf_bootloader.h"
 #include "misc.h"
 #include <calendar.h>
@@ -37,10 +37,10 @@ void console_init(void)
 	usart_enable(&cdc_uart_module);
 }
 #endif
-void build_json(char *out, char type, int *bloodSugar, int actionTime, int gid, 
+char *build_json(char *old, char type, char* bloodSugar, int actionTime, int gid, 
 				char *device_id)
 {
-#if 1
+#if 0
 	sprintf(out, JSON,type,bloodSugar[0],bloodSugar[1],actionTime,gid,device_id);
 #else
 	cJSON *root;
@@ -49,17 +49,25 @@ void build_json(char *out, char type, int *bloodSugar, int actionTime, int gid,
 	if (old != NULL)
 	{
 		root = cJSON_Parse(old);
-		cJSON *array=cJSON_GetObjectItem(root,DATA);	
+		if (root == NULL)
+			printf("parse root failed\r\n");
+		cJSON *array=cJSON_GetObjectItem(root,DATA);
+		if (array == NULL)
+			printf("get %s failed\r\n", DATA);
 		cJSON *item = cJSON_CreateObject();
-		cJSON_AddItemToObject(item, TYPE, cJSON_CreateBool(type));
-		cJSON_AddItemToObject(item, XT, cJSON_CreateNumber(bloodSugar));
+		if (item == NULL)
+			printf("create obj failed\r\n");
+		cJSON_AddItemToObject(item, TYPE, cJSON_CreateNumber(type));
+		cJSON_AddItemToObject(item, XT, cJSON_CreateString(bloodSugar));
 		cJSON_AddItemToObject(item, TS, cJSON_CreateNumber(actionTime));
 		cJSON_AddItemToObject(item, GID, cJSON_CreateNumber(gid));
 		cJSON_AddItemToArray(array, item);
-		cJSON_ReplaceItemInObject(root,DATA,array);
+		printf("1\r\n");
 		out=cJSON_PrintUnformatted(root);	
+		printf("2\r\n");
 		cJSON_Delete(item);
-		cJSON_Delete(array);
+		printf("3\r\n");
+		//cJSON_Delete(array);
 		cJSON_Delete(root);
 		if(old)
 			free(old);
@@ -67,18 +75,18 @@ void build_json(char *out, char type, int *bloodSugar, int actionTime, int gid,
 	else
 	{
 		root = cJSON_CreateObject();
-		cJSON_AddItemToObject(root, DID, cJSON_CreateString(device_id));
 		cJSON *array = cJSON_CreateArray();
 		cJSON *item = cJSON_CreateObject();
-		cJSON_AddItemToObject(item, TYPE, cJSON_CreateBool(type));
-		cJSON_AddItemToObject(item, XT, cJSON_CreateNumber(bloodSugar));
+		cJSON_AddItemToObject(item, TYPE, cJSON_CreateNumber(type));
+		cJSON_AddItemToObject(item, XT, cJSON_CreateString(bloodSugar));
 		cJSON_AddItemToObject(item, TS, cJSON_CreateNumber(actionTime));
 		cJSON_AddItemToObject(item, GID, cJSON_CreateNumber(gid));
 		cJSON_AddItemToArray(array, item);
 		cJSON_AddItemToObject(root, DATA, array);
-		out=cJSON_PrintUnformatted(root);	
-		cJSON_Delete(item);
-		cJSON_Delete(array);
+		cJSON_AddItemToObject(root, DID, cJSON_CreateString(device_id));
+		out=cJSON_PrintUnformatted(root);
+		//cJSON_Delete(item);
+		//cJSON_Delete(array);
 		cJSON_Delete(root);
 		if(old)
 			free(old);
