@@ -76,12 +76,12 @@ int main(void)
 {
 	char json[512] = {0};
 	uint32_t serial_no[4];
-	uint8_t page_data[4096];	
+	uint8_t page_data[4096]={0};	
 	struct rtc_calendar_time time;
 	char type = 0;
 	int bloodSugar[2] = {0};
 	//int actionTime = 0x1234;
-	int gid = 0;
+	int gid = 0,ggid=10;
 	int i;
 	
 	serial_no[0] = *(uint32_t *)0x0080A00C;
@@ -121,6 +121,15 @@ int main(void)
 		bloodSugar[1] +=2;
 		//actionTime +=1;
 		gid +=1;
+		if (gid >= 10)
+		{	
+			if (ggid > 1)
+				ggid -=1;						
+			sprintf(page_data, "hello test %d", ggid);
+		}
+		else			
+			sprintf(page_data, "hello test %d", gid);
+		printf("offset %d\r\n",get_dev_ts(page_data,strlen(page_data)));
 		//if (json != NULL)
 		printf("%s\r\n",json);
 		sleepmgr_enter_sleep();

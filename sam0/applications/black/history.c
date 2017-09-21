@@ -1,9 +1,6 @@
 #include <asf.h>
 #include "history.h"
 #include "conf_at25dfx.h"
-#define LEN_ALL_DEV_NUM 1
-#define LEN_DEV_SERIAL 1
-#define LEN_ADDR_OFFSET 3
 #define TS_LEN 4
 uint32_t dev_addr = 0;
 
@@ -31,12 +28,38 @@ static void at25dfx_init(void)
 	at25dfx_chip_init(&at25dfx_chip, &at25dfx_spi, &at25dfx_chip_config);
 
 }
+void save_dev_ts(void)
+{
+	int i;
+	enum status_code ret = at25dfx_chip_wake(&at25dfx_chip);
+	if (ret != STATUS_OK) {printf("chip wake failed %d\r\n", ret); return;}
+	ret = at25dfx_chip_set_sector_protect(&at25dfx_chip, 0x00000, false);
+	if (ret != STATUS_OK) 
+		printf("sector protect failed %d\r\n", ret);
+	if (ret == STATUS_OK) 
+		ret = at25dfx_chip_erase_block(&at25dfx_chip, 0x00000, 
+				AT25DFX_BLOCK_SIZE_4KB);
+	if (ret == STATUS_OK) 
+		for (i=0; i<4096/256; i++) {
+			ret = at25dfx_chip_write_buffer(&at25dfx_chip, i*256, 
+											dev_info+i*256, 256);
+			if (ret != STATUS_OK) printf("write buffer failed %d\r\n", ret);	
+	}
+	if (ret == STATUS_OK) {
+		ret =at25dfx_chip_set_global_sector_protect(&at25dfx_chip, true);
+		if (ret != STATUS_OK) 
+			printf("global sector protect failed %d\r\n", ret);
+	}
+	ret = at25dfx_chip_sleep(&at25dfx_chip);
+	if (ret != STATUS_OK) printf("chip sleep failed %d\r\n", ret);
+}
 uint32_t get_dev_ts(uint8_t *serial, uint8_t len)
 {
 	uint32_t ts = 0;
 	bool found = false;
 	int offset = 2;
 	int dev_num = 0;
+	int i,j;
 	int devx_len = 0;
 	enum status_code ret = at25dfx_chip_wake(&at25dfx_chip);
 	if (ret != STATUS_OK) {printf("chip wake failed %d\r\n", ret); return ts;}
@@ -48,25 +71,74 @@ uint32_t get_dev_ts(uint8_t *serial, uint8_t len)
 		return ts;
 	}
 	dev_num = (dev_info[0] << 8) | dev_info[1];
-	if (dev_num != 0xff) {
+	printf("dev_num %d, input %s , len %d\r\n", dev_num,serial,len);
+	if (dev_num != 0xffff) {
 		int i = 0;
 		for (i=0; i<dev_num; i++) {
 			devx_len = dev_info[offset];
+			printf("devx_len %d\r\n", devx_len);
 			if (devx_len == len) {
 				if (memcmp(serial, &(dev_info[offset+1]), len) == 0) {
 					found = true;
-					ts = (dev_info[offset+len+1] << 24) |
-						 (dev_info[offset+len+2] << 16) |
-						 (dev_info[offset+len+3] << 8) |
-						 (dev_info[offset+len+4] << 0);
+					ts = (dev_info[offset+len+2] << 24) |
+						 (dev_info[offset+len+3] << 16) |
+						 (dev_info[offset+len+4] << 8) |
+						 (dev_info[offset+len+5] << 0);
+					printf("found device offset %d , len %d, ts %d\r\n", offset,dev_info[offset],ts);
+					ts = offset+len+2;
+					for (j=0; j<dev_info[offset]; j++)
+						printf("%c", dev_info[offset+j+1]);
+					printf("\r\n");
 					break;
 				}
 			}				
 			offset = offset + devx_len + TS_LEN + 2;
+			if (offset >= 4096) {
+				at25dfx_chip_sleep(&at25dfx_chip);
+				return 0;
+			}
 		}
 	}
 
-	if (!found)
+	if (!found) {
+		if (dev_num == 0xffff) {/*first in use*/
+			printf("this spi flash first in use\r\n");
+			dev_info[0] = 0x00;dev_info[1] = 0x01;
+			dev_info[2] = len;
+			memcpy(dev_info + 3, serial, len);
+			dev_info[4] = 0x00;dev_info[5] = 0x00;
+			dev_info[6] = 0x00;dev_info[7] = 0x00;
+			ts = 4;
+		} else {
+			printf("add new device at %d \r\n",offset);
+			dev_num++;
+			dev_info[0] = (dev_num >> 8)&0xff;dev_info[1] = dev_num & 0xff;
+			dev_info[offset] = len;
+			memcpy(dev_info + offset + 1, serial, len);
+			dev_info[offset+len+2] = 0x00;
+			dev_info[offset+len+3] = 0x00;
+			dev_info[offset+len+4] = 0x00;
+			dev_info[offset+len+5] = 0x00;
+			ts = offset+len+2;
+		}
+		ret = at25dfx_chip_set_sector_protect(&at25dfx_chip, 0x00000, false);
+		if (ret != STATUS_OK) 
+			printf("sector protect failed %d\r\n", ret);
+		if (ret == STATUS_OK) 
+			ret = at25dfx_chip_erase_block(&at25dfx_chip, 0x00000, 
+					AT25DFX_BLOCK_SIZE_4KB);
+		if (ret == STATUS_OK) 
+			for (i=0; i<4096/256; i++) {
+				ret = at25dfx_chip_write_buffer(&at25dfx_chip, i*256, 
+												dev_info+i*256, 256);
+				if (ret != STATUS_OK) printf("write buffer failed %d\r\n", ret);	
+		}
+		if (ret == STATUS_OK) {
+			ret =at25dfx_chip_set_global_sector_protect(&at25dfx_chip, true);
+			if (ret != STATUS_OK) 
+				printf("global sector protect failed %d\r\n", ret);
+		}
+	}
 	ret = at25dfx_chip_sleep(&at25dfx_chip);
 	if (ret != STATUS_OK) printf("chip sleep failed %d\r\n", ret);
 	return ts;
@@ -82,9 +154,13 @@ uint8_t history_init(void)
 		printf("found spi flash\r\n");
 		ret = 1;
 	}
+	at25dfx_chip_set_sector_protect(&at25dfx_chip, 0x00000, false);
+	at25dfx_chip_erase_block(&at25dfx_chip, 0x00000, 
+					AT25DFX_BLOCK_SIZE_4KB);
+	at25dfx_chip_set_global_sector_protect(&at25dfx_chip, true);
 	at25dfx_chip_sleep(&at25dfx_chip);
 }
-
+/*
 void test_flash(void)
 {
 	enum status_code ret = at25dfx_chip_read_buffer(&at25dfx_chip, 0x0000, 
@@ -103,7 +179,7 @@ void test_flash(void)
 	memset(dev_info, 0, 4096);
 	ret = at25dfx_chip_read_buffer(&at25dfx_chip, 0x0000, dev_info, 4096);
 	if (ret != STATUS_OK) printf("read buffer2 failed failed %d\r\n", ret);	
-	ret = at25dfx_chip_set_global_sector_protect(&at25dfx_chip, true);
+	ret =at25dfx_chip_set_global_sector_protect(&at25dfx_chip, true);
 	if (ret != STATUS_OK) printf("global sector protect failed %d\r\n", ret);
 	ret = at25dfx_chip_sleep(&at25dfx_chip);
 	if (ret != STATUS_OK) printf("chip sleep failed %d\r\n", ret);
@@ -112,3 +188,4 @@ void test_flash(void)
 		printf("0x%02x\t", dev_info[i]);
 		}
 }
+*/

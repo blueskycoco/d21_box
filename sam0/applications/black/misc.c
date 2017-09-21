@@ -15,8 +15,7 @@
 #define TS		"actionTime"
 #define GID		"gid"
 #define DID		"device_id"
-#define JSON "{\"data\": {\"type\": %d,\"bloodSugar\": %d.%d,\"actionTime\": %d,\
-			 "gid\": %d},\"deviceId\": \"%s\"}"
+#define JSON "{\"data\": {\"type\": %d,\"bloodSugar\": %d.%d,\"actionTime\": %d,\"gid\": %d},\"deviceId\": \"%s\"}"
 #if CONSOLE_OUTPUT_ENABLED
 /**
  * \brief Initializes the console output
