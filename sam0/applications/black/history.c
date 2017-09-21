@@ -5,6 +5,7 @@
 uint32_t dev_addr = 0;
 
 uint8_t dev_info[4096] = {0};
+uint32_t g_index = 0;
 struct spi_module at25dfx_spi;
 struct at25dfx_chip_module at25dfx_chip;
 static void at25dfx_init(void)
@@ -28,9 +29,15 @@ static void at25dfx_init(void)
 	at25dfx_chip_init(&at25dfx_chip, &at25dfx_spi, &at25dfx_chip_config);
 
 }
-void save_dev_ts(void)
+void save_dev_ts(uint32_t ts)
 {
 	int i;
+	if (g_index + 3 < 4096) {
+		dev_info[g_index] = (ts >> 24) & 0xff;
+		dev_info[g_index+1] = (ts >> 24) & 0xff;
+		dev_info[g_index+2] = (ts >> 24) & 0xff;
+		dev_info[g_index+3] = (ts >> 24) & 0xff;
+	}
 	enum status_code ret = at25dfx_chip_wake(&at25dfx_chip);
 	if (ret != STATUS_OK) {printf("chip wake failed %d\r\n", ret); return;}
 	ret = at25dfx_chip_set_sector_protect(&at25dfx_chip, 0x00000, false);
@@ -85,7 +92,7 @@ uint32_t get_dev_ts(uint8_t *serial, uint8_t len)
 						 (dev_info[offset+len+4] << 8) |
 						 (dev_info[offset+len+5] << 0);
 					printf("found device offset %d , len %d, ts %d\r\n", offset,dev_info[offset],ts);
-					ts = offset+len+2;
+					g_index = offset+len+2;
 					for (j=0; j<dev_info[offset]; j++)
 						printf("%c", dev_info[offset+j+1]);
 					printf("\r\n");
@@ -108,7 +115,7 @@ uint32_t get_dev_ts(uint8_t *serial, uint8_t len)
 			memcpy(dev_info + 3, serial, len);
 			dev_info[4] = 0x00;dev_info[5] = 0x00;
 			dev_info[6] = 0x00;dev_info[7] = 0x00;
-			ts = 4;
+			g_index = 4;
 		} else {
 			printf("add new device at %d \r\n",offset);
 			dev_num++;
@@ -119,7 +126,7 @@ uint32_t get_dev_ts(uint8_t *serial, uint8_t len)
 			dev_info[offset+len+3] = 0x00;
 			dev_info[offset+len+4] = 0x00;
 			dev_info[offset+len+5] = 0x00;
-			ts = offset+len+2;
+			g_index = offset+len+2;
 		}
 		ret = at25dfx_chip_set_sector_protect(&at25dfx_chip, 0x00000, false);
 		if (ret != STATUS_OK) 
