@@ -125,7 +125,7 @@ int main(void)
 		//actionTime +=1;
 		gid +=1;
 		ggid +=1;
-		if (gid >= 100)
+		if (gid >= 30)
 		{	
 			//if (ggid > 1)
 			//	ggid -=1;						
