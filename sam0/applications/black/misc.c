@@ -46,34 +46,22 @@ char *build_json(char *old, char type, char* bloodSugar, int actionTime, int gid
 	cJSON *root;
 	char *out = NULL;
 
-	if (old != NULL)
-	{
+	if (old != NULL) {
 		root = cJSON_Parse(old);
-		if (root == NULL)
-			printf("parse root failed\r\n");
-		cJSON *array=cJSON_GetObjectItem(root,DATA);
-		if (array == NULL)
-			printf("get %s failed\r\n", DATA);
+		if(old) {
+			free(old);
+			old = NULL;
+		}
+		cJSON *array= cJSON_GetObjectItem(root,DATA);
 		cJSON *item = cJSON_CreateObject();
-		if (item == NULL)
-			printf("create obj failed\r\n");
+		cJSON_AddItemToArray(array, item);
 		cJSON_AddItemToObject(item, TYPE, cJSON_CreateNumber(type));
 		cJSON_AddItemToObject(item, XT, cJSON_CreateString(bloodSugar));
 		cJSON_AddItemToObject(item, TS, cJSON_CreateNumber(actionTime));
 		cJSON_AddItemToObject(item, GID, cJSON_CreateNumber(gid));
-		cJSON_AddItemToArray(array, item);
-		printf("1\r\n");
 		out=cJSON_PrintUnformatted(root);	
-		printf("2\r\n");
-		cJSON_Delete(item);
-		printf("3\r\n");
-		//cJSON_Delete(array);
 		cJSON_Delete(root);
-		if(old)
-			free(old);
-	}
-	else
-	{
+	} else {
 		root = cJSON_CreateObject();
 		cJSON *array = cJSON_CreateArray();
 		cJSON *item = cJSON_CreateObject();
@@ -85,11 +73,7 @@ char *build_json(char *old, char type, char* bloodSugar, int actionTime, int gid
 		cJSON_AddItemToObject(root, DATA, array);
 		cJSON_AddItemToObject(root, DID, cJSON_CreateString(device_id));
 		out=cJSON_PrintUnformatted(root);
-		//cJSON_Delete(item);
-		//cJSON_Delete(array);
 		cJSON_Delete(root);
-		if(old)
-			free(old);
 	}
 	return out;
 #endif

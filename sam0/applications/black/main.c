@@ -81,7 +81,7 @@ int main(void)
 	char type = 0;
 	int bloodSugar[2] = {0};
 	//int actionTime = 0x1234;
-	int gid = 0,ggid=10;
+	int gid = 0,ggid=0;
 	int i;
 	
 	serial_no[0] = *(uint32_t *)0x0080A00C;
@@ -116,7 +116,7 @@ int main(void)
 		}
 		get_rtc_time(&time);	
 		sprintf(page_data,"%d.%d",bloodSugar[0],bloodSugar[1]);
-		json = build_json(json, type, page_data, date2ts(time), gid, device_serial_no);
+		json = build_json(json, type, page_data, date2ts(time), ggid, device_serial_no);
 		if (json != NULL)
 		printf("%s\r\n",json);
 		type = 1 - type;
@@ -124,15 +124,19 @@ int main(void)
 		bloodSugar[1] +=2;
 		//actionTime +=1;
 		gid +=1;
+		ggid +=1;
 		if (gid >= 10)
 		{	
-			if (ggid > 1)
-				ggid -=1;						
+			//if (ggid > 1)
+			//	ggid -=1;						
 			sprintf(page_data, "hello test %d", ggid);
+			free(json);
+			json = NULL;
+			gid = 0;
 		}
 		else			
 			sprintf(page_data, "hello test %d", gid);
-		printf("offset %d\r\n",get_dev_ts(page_data,strlen(page_data)));
+		//printf("ts %d\r\n",get_dev_ts(page_data,strlen(page_data)));
 		
 		sleepmgr_enter_sleep();
 	}

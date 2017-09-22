@@ -636,7 +636,6 @@ static char *print_object(cJSON *item,int depth,int fmt,printbuffer *p)
 			cJSON_free(names);cJSON_free(entries);
 			return 0;
 		}
-		
 		/* Compose the output: */
 		*out='{';ptr=out+1;if (fmt)*ptr++='\n';*ptr=0;
 		for (i=0;i<numentries;i++)
@@ -649,7 +648,6 @@ static char *print_object(cJSON *item,int depth,int fmt,printbuffer *p)
 			if (fmt) *ptr++='\n';*ptr=0;
 			cJSON_free(names[i]);cJSON_free(entries[i]);
 		}
-		
 		cJSON_free(names);cJSON_free(entries);
 		if (fmt) for (i=0;i<depth-1;i++) *ptr++='\t';
 		*ptr++='}';*ptr++=0;

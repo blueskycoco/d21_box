@@ -91,7 +91,7 @@ uint32_t get_dev_ts(uint8_t *serial, uint8_t len)
 						 (dev_info[offset+len+3] << 16) |
 						 (dev_info[offset+len+4] << 8) |
 						 (dev_info[offset+len+5] << 0);
-					//printf("found device offset %d , len %d, ts %d\r\n", offset,dev_info[offset],ts);
+					printf("found device offset %d , len %d, ts %d\r\n", offset,dev_info[offset],ts);
 					g_index = offset+len+2;
 					//for (j=0; j<dev_info[offset]; j++)
 					//	printf("%c", dev_info[offset+j+1]);
