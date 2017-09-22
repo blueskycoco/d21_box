@@ -206,7 +206,8 @@ CPPFLAGS = \
        -D USART_CALLBACK_MODE=true                        \
        -D USB_HOST_LPM_SUPPORT                            \
        -D SPI_CALLBACK_MODE=true                          \
-       -D __SAMD21J18A__								  
+       -D __SAMD21J18A__								  \
+       -fstack-usage
 
 # Extra flags to use when linking
 LDFLAGS = \
