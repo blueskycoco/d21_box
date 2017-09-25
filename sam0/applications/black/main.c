@@ -15,6 +15,10 @@ extern bool libre_found;
 #define APP_HEADER "samd21 black box\r\n"
 #endif
 static int history_num = 0;
+int32_t cur_ts = -1;
+int32_t bak_ts = -1;
+uint8_t page_data[4096]={0};	
+extern uint8_t cur_libre_serial_no[32];
 //COMPILER_WORD_ALIGNED
 //volatile uint8_t buffer[FLASH_BUFFER_SIZE];
 char device_serial_no[33] = {0};
@@ -63,6 +67,8 @@ void ui_usb_connection_event(uhc_device_t *dev, bool b_present)
 	UNUSED(dev);
 	if (!b_present) {
 		libre_found = false;		
+		cur_ts = -1;
+		bak_ts = -1;
 	}
 }
 //bool usb_sleeping = false;
@@ -75,13 +81,14 @@ void ui_usb_wakeup_event(void)
 int main(void)
 {
 	char *json = NULL;
+	uint8_t *xt_data = NULL;
+	uin32_t xt_len = 0;
 	uint32_t serial_no[4];
-	uint8_t page_data[4096]={0};	
 	struct rtc_calendar_time time;
 	char type = 0;
 	int bloodSugar[2] = {0};
 	//int actionTime = 0x1234;
-	int gid = 0,ggid=0;
+	//int gid = 0,ggid=0;
 	int i;
 	
 	serial_no[0] = *(uint32_t *)0x0080A00C;
@@ -109,11 +116,42 @@ int main(void)
 				uhc_resume();
 			if (!uhc_is_suspend())
 			{
-				get_cap_data();
+				if (cur_ts == -1 || bak_ts == -1) {
+					cur_ts = get_dev_ts(cur_libre_serial_no,32);
+					bak_ts = cur_ts;
+				}
+				if (get_cap_data(&xt_data, &xt_len)) {
+					if (xt_len > 0) {
+						for (i = 0; i < xt_len;) {
+							/* |**|****|*| */
+							int32_t ts = xt_data[i+2] << 24 | 
+										 xt_data[i+3] << 16 | 
+										 xt_data[i+4] <<  8 | 
+										 xt_data[i+5] <<  0;
+							int16_t gid = xt_data[i] << 8 | xt_data[i+1];
+							if (ts > cur_ts) {
+								json = build_json(json, 0, xt_data[i+6], ts, gid, device_serial_no);
+								j++;
+								if (j >= MAX_JSON) {
+									char out[256] = {0};
+									uint8_t result = http_post(json,strlen(json),out);
+									char *time = NULL;
+									if (do_it(out, &time)) {
+										/*set cur time*/
+										save_dev_ts(ts);
+										cur_ts = ts;
+									}
+								}
+							}
+							i=i+7;
+						}
+					}
+				}					
 				printf("suspend usb\r\n");
 				uhc_suspend(false);
 			}
 		}
+		/*
 		get_rtc_time(&time);	
 		sprintf(page_data,"%d.%d",bloodSugar[0],bloodSugar[1]);
 		json = build_json(json, type, page_data, date2ts(time), ggid, device_serial_no);
@@ -137,7 +175,7 @@ int main(void)
 		else
 			sprintf(page_data, "hello test %d", gid);
 		printf("ts %d\r\n",get_dev_ts(page_data,strlen(page_data)));
-		
+		*/
 		sleepmgr_enter_sleep();
 	}
 }

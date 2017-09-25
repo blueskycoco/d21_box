@@ -185,7 +185,7 @@ bool send_cmd(uhc_device_t *dev, const uint8_t *cmd)
 	return true;
 
 }
-bool get_cap_data()
+bool get_cap_data(uint8_t **out, uint32_t *len)
 {	
 	usb_setup_req_t req;
 	req.bmRequestType = USB_REQ_RECIP_INTERFACE | USB_REQ_TYPE_CLASS | USB_REQ_DIR_OUT;
