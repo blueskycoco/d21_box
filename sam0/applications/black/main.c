@@ -125,7 +125,7 @@ int main(void)
 		//actionTime +=1;
 		gid +=1;
 		ggid +=1;
-		if (gid >= 30)
+		if (gid >= 26)
 		{	
 			//if (ggid > 1)
 			//	ggid -=1;						
@@ -134,9 +134,9 @@ int main(void)
 			json = NULL;
 			gid = 0;
 		}
-		else			
+		else
 			sprintf(page_data, "hello test %d", gid);
-		//printf("ts %d\r\n",get_dev_ts(page_data,strlen(page_data)));
+		printf("ts %d\r\n",get_dev_ts(page_data,strlen(page_data)));
 		
 		sleepmgr_enter_sleep();
 	}
