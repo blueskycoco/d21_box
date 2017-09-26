@@ -37,7 +37,7 @@ void console_init(void)
 	usart_enable(&cdc_uart_module);
 }
 #endif
-char *build_json(char *old, char type, int8_t bloodSugar, int actionTime, int gid, 
+char *build_json(char *old, char type, uint32_t bloodSugar, int actionTime, int gid, 
 				char *device_id)
 {
 #if 0
@@ -78,7 +78,7 @@ char *build_json(char *old, char type, int8_t bloodSugar, int actionTime, int gi
 	return out;
 #endif
 }
-bool do_it(uint8_t *in, uint8_t **time)
+bool do_it(uint8_t *in, uint32_t *time)
 {
 	cJSON *root = NULL, *data = NULL, *ts = NULL;
 	bool result = false;
@@ -96,12 +96,9 @@ bool do_it(uint8_t *in, uint8_t **time)
 		if (data)
 			ts = cJSON_GetObjectItem(data, "systemTime");
 		if (ts) {
-			if (ts->type == cJSON_String) {
-				int len = strlen(ts->valuestring);
-				*time = (uint8_t *)malloc(len+1);
-				memset(*time, 0, len+1);
-				memcpy(*time, ts->valuestring, len);
-				printf("systemTime: %s\r\n", *time);
+			if (ts->type == cJSON_Number) {
+				*time = ts->valueint;
+				printf("systemTime: %d\r\n", *time);
 			}
 		}
 

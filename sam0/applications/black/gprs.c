@@ -23,6 +23,7 @@ static uint8_t gprs_send_cmd(const uint8_t *cmd, int len,int need_connect,uint8_
 {
 	uint16_t rlen=0;
 	uint32_t i = 0;
+	uint8_t result = 0;
 	usart_serial_write_packet(&gprs_uart_module, cmd, len);
 	while(1)
 	{
@@ -32,11 +33,15 @@ static uint8_t gprs_send_cmd(const uint8_t *cmd, int len,int need_connect,uint8_
 			if (need_connect)
 			{
 				if (strstr(rcv, "CONNECT") != NULL || strstr(rcv, "OK")!= NULL)
+				{
+					result = 1;
 					break;					
+				}
 				memset(rcv,0,256);
-			}
-			else
+			} else {
+				result = 1;
 				break;
+			}
 		}
 		else
 		{
@@ -54,7 +59,7 @@ static uint8_t gprs_send_cmd(const uint8_t *cmd, int len,int need_connect,uint8_
 		}
 	}
 	printf("gprs %d rcv %s\r\n",rlen,rcv);
-	return 1;
+	return result;
 }
 uint8_t gprs_config(void)
 {

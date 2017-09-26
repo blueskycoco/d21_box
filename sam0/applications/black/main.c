@@ -9,15 +9,16 @@
 #include "rtc.h"
 #include "flash.h"
 #include "history.h"
-
+#include "calendar.h"
+#define MAX_JSON 26
+#define MAX_TRY 3
 extern bool libre_found;
 #if CONSOLE_OUTPUT_ENABLED
 #define APP_HEADER "samd21 black box\r\n"
 #endif
-static int history_num = 0;
+
 int32_t cur_ts = -1;
 int32_t bak_ts = -1;
-uint8_t page_data[4096]={0};	
 extern uint8_t cur_libre_serial_no[32];
 //COMPILER_WORD_ALIGNED
 //volatile uint8_t buffer[FLASH_BUFFER_SIZE];
@@ -57,7 +58,7 @@ static void black_system_init(void)
 	//ui_init();
 	/* Start USB host stack */
 	uhc_start();
-	//gprs_config();
+	gprs_config();
 	if (history_init())
 		printf("load history done\r\n");
 }
@@ -71,26 +72,24 @@ void ui_usb_connection_event(uhc_device_t *dev, bool b_present)
 		bak_ts = -1;
 	}
 }
-//bool usb_sleeping = false;
 void ui_usb_wakeup_event(void)
 {
 	printf("usb wakeup event\r\n");
-	//usb_sleeping = false;
 }
 
 int main(void)
 {
 	char *json = NULL;
 	uint8_t *xt_data = NULL;
-	uin32_t xt_len = 0;
+	uint32_t xt_len = 0;
 	uint32_t serial_no[4];
-	struct rtc_calendar_time time;
-	char type = 0;
-	int bloodSugar[2] = {0};
-	//int actionTime = 0x1234;
-	//int gid = 0,ggid=0;
-	int i;
-	
+	char out[256] = {0};
+	struct calendar_date date;
+	struct rtc_calendar_time rtc_time;
+	uint8_t result = 0;
+	int32_t ts;
+	int i,j;
+
 	serial_no[0] = *(uint32_t *)0x0080A00C;
 	serial_no[1] = *(uint32_t *)0x0080A040;
 	serial_no[2] = *(uint32_t *)0x0080A044;
@@ -102,80 +101,98 @@ int main(void)
 	printf("ID %x %x %x %x \r\n", serial_no[0],
 			serial_no[1], serial_no[2], serial_no[3]);
 	init_rtc();
-	struct rtc_calendar_time cur_time;
-	get_rtc_time(&cur_time);
-	printf("set time %d\r\n",set_rtc_time(cur_time));
-//	configure_eeprom();
-	//configure_bod();
-	//eeprom_emulator_read_page(0, page_data);
-	printf("cur history num: %d\r\n",history_num);
-	//test_gprs();
 	while (true) {
 		if (libre_found) {
 			if (uhc_is_suspend())
 				uhc_resume();
-			if (!uhc_is_suspend())
-			{
+			if (!uhc_is_suspend()) {
 				if (cur_ts == -1 || bak_ts == -1) {
 					cur_ts = get_dev_ts(cur_libre_serial_no,32);
 					bak_ts = cur_ts;
+					printf("%s inserted , ts %d\r\n",cur_libre_serial_no,cur_ts);
 				}
 				if (get_cap_data(&xt_data, &xt_len)) {
-					if (xt_len > 0) {
-						for (i = 0; i < xt_len;) {
-							/* |**|****|*| */
-							int32_t ts = xt_data[i+2] << 24 | 
-										 xt_data[i+3] << 16 | 
-										 xt_data[i+4] <<  8 | 
-										 xt_data[i+5] <<  0;
+					j = 0;
+					uint32_t time = 0;
+					printf("get %d bytes from sugar\r\n", xt_len);
+					for (i = 0; i < xt_len;) {
+						/* |**|****|*| */
+						ts = xt_data[i+2] << 24 | 
+							xt_data[i+3] << 16 | 
+							xt_data[i+4] <<  8 | 
+							xt_data[i+5] <<  0;
+						if (ts > cur_ts) {
+							printf("add ts %d to list\r\n", ts);
 							int16_t gid = xt_data[i] << 8 | xt_data[i+1];
-							if (ts > cur_ts) {
-								json = build_json(json, 0, xt_data[i+6], ts, gid, device_serial_no);
-								j++;
-								if (j >= MAX_JSON) {
-									char out[256] = {0};
-									uint8_t result = http_post(json,strlen(json),out);
-									char *time = NULL;
-									if (do_it(out, &time)) {
-										/*set cur time*/
-										save_dev_ts(ts);
-										cur_ts = ts;
+							uint32_t bloodSugar = xt_data[i+6]*142+22;
+							json = build_json(json, 0, bloodSugar, ts, gid, 
+											device_serial_no);
+							j++;
+							if (j >= MAX_JSON) {
+								int n = 0;
+								while (n < MAX_TRY) {
+									memset(out,0,256);
+									result = http_post(json,strlen(json)
+																,out);
+									if (result) {
+										do_it(out, &time);
+										printf("send server %s, rcv %s, time %d\r\n",
+												json, out, time);
+										bak_ts = ts;
+										break;
 									}
+									n++;
 								}
+								free(json);
+								json = NULL;
+								j=0;
+								if (n == MAX_TRY)
+									break;
 							}
-							i=i+7;
 						}
+						i=i+7;
 					}
-				}					
+					if (j > 0) {
+						int n = 0;
+						while (n < MAX_TRY) {
+							memset(out,0,256);
+							result = http_post(json,strlen(json),out);
+							if (result) {
+								do_it(out, &time);
+								printf("send server %s, rcv %s, time %d\r\n",
+											json, out, time);
+								bak_ts = ts;
+								break;
+							}
+							n++;
+						}
+						free(json);
+						json = NULL;
+						j=0;
+					}
+					/*set cur time*/
+					if (time != 0) {
+						calendar_timestamp_to_date(time, &date);
+						rtc_time.minute = date.minute;
+						rtc_time.second = date.second;
+						rtc_time.year = date.year;
+						rtc_time.month = date.month;
+						rtc_time.day = date.date+1;
+						rtc_time.hour = date.hour;
+						set_rtc_time(rtc_time);
+					}
+					if (bak_ts > cur_ts) {
+						cur_ts = bak_ts;
+						save_dev_ts(cur_ts);
+						printf("save ts %d\r\n", cur_ts);
+					}
+				} else
+					printf("there is no data from sugar\r\n");
 				printf("suspend usb\r\n");
 				uhc_suspend(false);
 			}
-		}
-		/*
-		get_rtc_time(&time);	
-		sprintf(page_data,"%d.%d",bloodSugar[0],bloodSugar[1]);
-		json = build_json(json, type, page_data, date2ts(time), ggid, device_serial_no);
-		if (json != NULL)
-		printf("%s\r\n",json);
-		type = 1 - type;
-		bloodSugar[0] +=1;
-		bloodSugar[1] +=2;
-		//actionTime +=1;
-		gid +=1;
-		ggid +=1;
-		if (gid >= 26)
-		{	
-			//if (ggid > 1)
-			//	ggid -=1;						
-			sprintf(page_data, "hello test %d", ggid);
-			free(json);
-			json = NULL;
-			gid = 0;
-		}
-		else
-			sprintf(page_data, "hello test %d", gid);
-		printf("ts %d\r\n",get_dev_ts(page_data,strlen(page_data)));
-		*/
+		} else
+			printf("no sugar insert\r\n");
 		sleepmgr_enter_sleep();
 	}
 }
