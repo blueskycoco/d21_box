@@ -7,6 +7,13 @@ static struct usart_module gprs_uart_module;
 static void gprs_init(void)
 {
 	struct usart_config usart_conf;
+	struct port_config pin_conf;
+	port_get_config_defaults(&pin_conf);
+
+	/* Configure LEDs as outputs, turn them off */
+	pin_conf.direction  = PORT_PIN_DIR_OUTPUT;
+	port_pin_set_config(PIN_PA11, &pin_conf);
+	port_pin_set_output_level(PIN_PA11, false);
 
 	usart_get_config_defaults(&usart_conf);
 	usart_conf.mux_setting = CONF_GPRS_MUX_SETTING;
@@ -18,6 +25,18 @@ static void gprs_init(void)
 
 	usart_serial_init(&gprs_uart_module, CONF_GPRS_USART_MODULE, &usart_conf);
 	usart_enable(&gprs_uart_module);
+}
+
+void gprs_power(int on)
+{
+	if (on)
+	{
+		port_pin_set_output_level(PIN_PA11, true);
+		delay_s(5);
+	}
+	else
+		port_pin_set_output_level(PIN_PA11, false);
+
 }
 static uint8_t gprs_send_cmd(const uint8_t *cmd, int len,int need_connect,uint8_t *rcv, uint16_t timeout)
 {

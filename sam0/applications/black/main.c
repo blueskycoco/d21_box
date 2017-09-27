@@ -114,6 +114,7 @@ int main(void)
 				if (get_cap_data(&xt_data, &xt_len)) {
 					j = 0;
 					uint32_t time = 0;
+					gprs_power(1);
 					printf("get %d bytes from sugar\r\n", (int)xt_len);
 					for (i = 0; i < xt_len;) {
 						/* |**|****|*| */
@@ -170,6 +171,7 @@ int main(void)
 						json = NULL;
 						j=0;
 					}
+					gprs_power(0);
 					/*set cur time*/
 					if (time != 0) {
 						calendar_timestamp_to_date(time, &date);
