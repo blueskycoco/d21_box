@@ -83,7 +83,7 @@ bool do_it(uint8_t *in, uint32_t *time)
 	cJSON *root = NULL, *data = NULL, *ts = NULL;
 	bool result = false;
 	if (in != NULL) {
-		root = cJSON_Parse(in);
+		root = cJSON_Parse((const char *)in);
 		if (root) {
 			data = cJSON_GetObjectItem(root, "ext");
 			cJSON *status = cJSON_GetObjectItem(root, "status");
@@ -98,7 +98,7 @@ bool do_it(uint8_t *in, uint32_t *time)
 		if (ts) {
 			if (ts->type == cJSON_Number) {
 				*time = ts->valueint;
-				printf("systemTime: %d\r\n", *time);
+				printf("systemTime: %d\r\n", (int)*time);
 			}
 		}
 

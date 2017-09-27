@@ -68,7 +68,7 @@ void ui_usb_connection_event(uhc_device_t *dev, bool b_present)
 	UNUSED(dev);
 	if (!b_present) {
 		libre_found = false;		
-		cur_ts = -1;
+		//cur_ts = -1;
 		bak_ts = -1;
 	}
 }
@@ -88,7 +88,7 @@ int main(void)
 	struct rtc_calendar_time rtc_time;
 	uint8_t result = 0;
 	int32_t ts;
-	int i,j;
+	unsigned int i,j;
 
 	serial_no[0] = *(uint32_t *)0x0080A00C;
 	serial_no[1] = *(uint32_t *)0x0080A040;
@@ -98,8 +98,8 @@ int main(void)
 			(unsigned)serial_no[0], (unsigned)serial_no[1],
 			(unsigned)serial_no[2], (unsigned)serial_no[3]);
 	black_system_init();
-	printf("ID %x %x %x %x \r\n", serial_no[0],
-			serial_no[1], serial_no[2], serial_no[3]);
+	printf("ID %x %x %x %x \r\n", (unsigned int)serial_no[0],
+			(unsigned int)serial_no[1], (unsigned int)serial_no[2], (unsigned int)serial_no[3]);
 	init_rtc();
 	while (true) {
 		if (libre_found) {
@@ -109,20 +109,20 @@ int main(void)
 				if (cur_ts == -1 || bak_ts == -1) {
 					cur_ts = get_dev_ts(cur_libre_serial_no,32);
 					bak_ts = cur_ts;
-					printf("%s inserted , ts %d\r\n",cur_libre_serial_no,cur_ts);
+					printf("%s inserted , ts %d\r\n",cur_libre_serial_no,(int)cur_ts);
 				}
 				if (get_cap_data(&xt_data, &xt_len)) {
 					j = 0;
 					uint32_t time = 0;
-					printf("get %d bytes from sugar\r\n", xt_len);
+					printf("get %d bytes from sugar\r\n", (int)xt_len);
 					for (i = 0; i < xt_len;) {
 						/* |**|****|*| */
 						ts = xt_data[i+2] << 24 | 
-							xt_data[i+3] << 16 | 
-							xt_data[i+4] <<  8 | 
-							xt_data[i+5] <<  0;
+							 xt_data[i+3] << 16 | 
+							 xt_data[i+4] <<  8 | 
+							 xt_data[i+5] <<  0;
 						if (ts > cur_ts) {
-							printf("add ts %d to list\r\n", ts);
+							printf("add ts %d to list\r\n", (int)ts);
 							int16_t gid = xt_data[i] << 8 | xt_data[i+1];
 							uint32_t bloodSugar = xt_data[i+6]*142+22;
 							json = build_json(json, 0, bloodSugar, ts, gid, 
@@ -132,12 +132,12 @@ int main(void)
 								int n = 0;
 								while (n < MAX_TRY) {
 									memset(out,0,256);
-									result = http_post(json,strlen(json)
+									result = http_post((uint8_t *)json,strlen(json)
 																,out);
 									if (result) {
-										do_it(out, &time);
-										printf("send server %s, rcv %s, time %d\r\n",
-												json, out, time);
+										do_it((uint8_t *)out, &time);
+										printf("send server %s, \r\nrcv %s, time %d\r\n",
+												json, out, (int)time);
 										bak_ts = ts;
 										break;
 									}
@@ -156,11 +156,11 @@ int main(void)
 						int n = 0;
 						while (n < MAX_TRY) {
 							memset(out,0,256);
-							result = http_post(json,strlen(json),out);
+							result = http_post((uint8_t *)json,strlen(json),out);
 							if (result) {
-								do_it(out, &time);
+								do_it((uint8_t *)out, &time);
 								printf("send server %s, rcv %s, time %d\r\n",
-											json, out, time);
+											json, out, (int)time);
 								bak_ts = ts;
 								break;
 							}
@@ -184,7 +184,7 @@ int main(void)
 					if (bak_ts > cur_ts) {
 						cur_ts = bak_ts;
 						save_dev_ts(cur_ts);
-						printf("save ts %d\r\n", cur_ts);
+						printf("save ts %d\r\n", (int)cur_ts);
 					}
 				} else
 					printf("there is no data from sugar\r\n");
