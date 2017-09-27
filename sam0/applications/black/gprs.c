@@ -14,6 +14,12 @@ static void gprs_init(void)
 	pin_conf.direction  = PORT_PIN_DIR_OUTPUT;
 	port_pin_set_config(PIN_PA11, &pin_conf);
 	port_pin_set_output_level(PIN_PA11, false);
+	port_pin_set_config(PIN_PA07, &pin_conf);
+	port_pin_set_output_level(PIN_PA07, true);
+	port_pin_set_config(PIN_PA10, &pin_conf);
+	port_pin_set_output_level(PIN_PA10, false);
+	port_pin_set_config(PIN_PA27, &pin_conf);
+	port_pin_set_output_level(PIN_PA27, false);
 
 	usart_get_config_defaults(&usart_conf);
 	usart_conf.mux_setting = CONF_GPRS_MUX_SETTING;
@@ -31,11 +37,14 @@ void gprs_power(int on)
 {
 	if (on)
 	{
+		port_pin_set_output_level(PIN_PA10, true);
 		port_pin_set_output_level(PIN_PA11, true);
 		delay_s(5);
-	}
-	else
 		port_pin_set_output_level(PIN_PA11, false);
+	} else {
+		port_pin_set_output_level(PIN_PA11, false);
+		port_pin_set_output_level(PIN_PA10, false);
+	}
 
 }
 static uint8_t gprs_send_cmd(const uint8_t *cmd, int len,int need_connect,uint8_t *rcv, uint16_t timeout)

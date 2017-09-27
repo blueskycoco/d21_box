@@ -27,7 +27,7 @@ char device_serial_no[33] = {0};
 static void black_system_init(void)
 {
 	struct nvm_config nvm_cfg;
-	struct port_config pin;
+	//struct port_config pin;
 
 	/* Initialize the system */
 	system_init();
@@ -83,6 +83,22 @@ static void button_callback(void)
 	printf("button pressed\r\n");
 	/*long press for power off*/
 	/*short press for cap*/
+	uint32_t i = 0;
+
+	while(1) {
+		if (!port_pin_get_input_level(PIN_PA09))
+			i++;
+		else
+			break;
+		delay_ms(1);
+		if (i>3000)
+			break;
+	}
+
+	if (i > 3000)
+		long_press = true;
+	else
+		long_press = false;
 }
 
 /**
@@ -106,6 +122,19 @@ static void enable_button_interrupt(void)
 	extint_chan_clear_detected(LINE);
 	extint_chan_enable_callback(LINE,
 			EXTINT_CALLBACK_TYPE_DETECT);
+}
+static void usb_power(int on)
+{
+	if (on) {
+		port_pin_set_output_level(PIN_PA27, true);
+	} else {
+		port_pin_set_output_level(PIN_PA27, false);
+	}
+
+}
+static void power_off()
+{
+	port_pin_set_output_level(PIN_PA07, false);
 }
 int main(void)
 {
@@ -133,6 +162,9 @@ int main(void)
 			(unsigned int)serial_no[1], (unsigned int)serial_no[2], (unsigned int)serial_no[3]);
 	init_rtc();
 	while (true) {
+		if (long_press)
+			power_off();
+		usb_power(1);
 		if (libre_found) {
 			if (uhc_is_suspend())
 				uhc_resume();
@@ -226,6 +258,7 @@ int main(void)
 			}
 		} else
 			printf("no sugar insert\r\n");
+		usb_power(0);
 		sleepmgr_enter_sleep();
 	}
 }
