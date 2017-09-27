@@ -167,7 +167,7 @@ static bool set_idle(uhc_device_t* dev)
 	}
 	return true;
 }
-bool send_cmd(uhc_device_t *dev, const uint8_t *cmd)
+/*static bool send_cmd(uhc_device_t *dev, const uint8_t *cmd)
 {
 	usb_setup_req_t req;
 	req.bmRequestType = USB_REQ_RECIP_INTERFACE | USB_REQ_TYPE_CLASS | USB_REQ_DIR_OUT;
@@ -177,15 +177,15 @@ bool send_cmd(uhc_device_t *dev, const uint8_t *cmd)
 	req.wLength = uhi_hid_generic_dev.report_size;
 	if (!uhd_setup_request(dev->address,
 		&req,
-		cmd,
+		(uint8_t *)cmd,
 		uhi_hid_generic_dev.report_size,
 		NULL, NULL)) {
 		return false;
 	}
 	return true;
 
-}
-bool get_cap_data()
+}*/
+bool get_cap_data(uint8_t **out, uint32_t *len)
 {	
 	usb_setup_req_t req;
 	req.bmRequestType = USB_REQ_RECIP_INTERFACE | USB_REQ_TYPE_CLASS | USB_REQ_DIR_OUT;
@@ -241,12 +241,10 @@ static void uhi_hid_generic_report_reception(
 		uhd_trans_status_t status,
 		iram_size_t nb_transfered)
 {
-	uint8_t state_prev;
-	uint8_t state_new;
 	int i;
 	UNUSED(ep);
 	printf("uhi_hid_generic_report_reception ==> \r\nadd %x, ep %x, status %d, len %d\r\n",
-		add,ep,status,nb_transfered);
+		add,ep,status,(int)nb_transfered);
 	if ((status == UHD_TRANS_NOTRESPONDING) || (status == UHD_TRANS_TIMEOUT)) {
 		uhi_hid_generic_start_trans_report(add);
 		return; // HID mouse transfer restart

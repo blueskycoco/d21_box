@@ -66,7 +66,7 @@ uint32_t get_dev_ts(uint8_t *serial, uint8_t len)
 	bool found = false;
 	int offset = 2;
 	int dev_num = 0;
-	int i,j;
+	int i;
 	int devx_len = 0;
 	enum status_code ret = at25dfx_chip_wake(&at25dfx_chip);
 	if (ret != STATUS_OK) {printf("chip wake failed %d\r\n", ret); return ts;}
@@ -80,7 +80,7 @@ uint32_t get_dev_ts(uint8_t *serial, uint8_t len)
 	dev_num = (dev_info[0] << 8) | dev_info[1];
 	//printf("dev_num %d, input %s , len %d\r\n", dev_num,serial,len);
 	if (dev_num != 0xffff) {
-		int i = 0;
+		//int i = 0;
 		for (i=0; i<dev_num; i++) {
 			devx_len = dev_info[offset];
 			//printf("devx_len %d\r\n", devx_len);
@@ -91,7 +91,7 @@ uint32_t get_dev_ts(uint8_t *serial, uint8_t len)
 						 (dev_info[offset+len+3] << 16) |
 						 (dev_info[offset+len+4] << 8) |
 						 (dev_info[offset+len+5] << 0);
-					printf("found device offset %d , len %d, ts %d\r\n", offset,dev_info[offset],ts);
+					printf("found device offset %d , len %d, ts %d\r\n", offset,dev_info[offset],(int)ts);
 					g_index = offset+len+2;
 					//for (j=0; j<dev_info[offset]; j++)
 					//	printf("%c", dev_info[offset+j+1]);
@@ -166,6 +166,7 @@ uint8_t history_init(void)
 					AT25DFX_BLOCK_SIZE_4KB);
 	at25dfx_chip_set_global_sector_protect(&at25dfx_chip, true);
 	at25dfx_chip_sleep(&at25dfx_chip);
+	return ret;
 }
 /*
 void test_flash(void)
