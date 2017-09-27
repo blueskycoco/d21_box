@@ -13,6 +13,7 @@
 #define MAX_JSON 26
 #define MAX_TRY 3
 extern bool libre_found;
+bool long_press = false;
 #if CONSOLE_OUTPUT_ENABLED
 #define APP_HEADER "samd21 black box\r\n"
 #endif
@@ -77,6 +78,35 @@ void ui_usb_wakeup_event(void)
 	printf("usb wakeup event\r\n");
 }
 
+static void button_callback(void)
+{
+	printf("button pressed\r\n");
+	/*long press for power off*/
+	/*short press for cap*/
+}
+
+/**
+ * \brief Initializes and enables interrupt pin change
+ */
+#define LINE 9
+static void enable_button_interrupt(void)
+{
+	/* Initialize EIC for button wakeup */
+	struct extint_chan_conf eint_chan_conf;
+	extint_chan_get_config_defaults(&eint_chan_conf);
+
+	eint_chan_conf.gpio_pin            = PIN_PA09A_EIC_EXTINT9;
+	eint_chan_conf.gpio_pin_mux        = MUX_PA09A_EIC_EXTINT9;
+	eint_chan_conf.detection_criteria  = EXTINT_DETECT_FALLING;
+	eint_chan_conf.filter_input_signal = true;
+	extint_chan_set_config(LINE, &eint_chan_conf);
+	extint_register_callback(button_callback,
+			LINE,
+			EXTINT_CALLBACK_TYPE_DETECT);
+	extint_chan_clear_detected(LINE);
+	extint_chan_enable_callback(LINE,
+			EXTINT_CALLBACK_TYPE_DETECT);
+}
 int main(void)
 {
 	char *json = NULL;
@@ -98,6 +128,7 @@ int main(void)
 			(unsigned)serial_no[0], (unsigned)serial_no[1],
 			(unsigned)serial_no[2], (unsigned)serial_no[3]);
 	black_system_init();
+	enable_button_interrupt();
 	printf("ID %x %x %x %x \r\n", (unsigned int)serial_no[0],
 			(unsigned int)serial_no[1], (unsigned int)serial_no[2], (unsigned int)serial_no[3]);
 	init_rtc();
