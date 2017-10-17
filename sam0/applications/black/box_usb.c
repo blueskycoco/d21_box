@@ -47,226 +47,248 @@
 #include <asf.h>
 #include "box_usb.h"
 
-/**
- * \name Internal routines to manage asynchronous interrupt pin change
- * This interrupt is connected to a switch and allows to wakeup CPU in low sleep
- * mode.
- * This wakeup the USB devices connected via a downstream resume.
- * @{
- */
-static void ui_enable_asynchronous_interrupt(void);
-static void ui_disable_asynchronous_interrupt(void);
+unsigned char response[64] = {0};
 
-/**
- * \brief Interrupt handler for interrupt pin change
- */
-static void UI_WAKEUP_HANDLER(void)
+unsigned char recv_final_flag = 0;
+
+unsigned char recv_0x0c_cnt = 0;
+unsigned char first_send_28 = 1;
+union apollo_report
 {
-	if (uhc_is_suspend()) {
-		ui_disable_asynchronous_interrupt();
+    unsigned int report_word[16];
+    unsigned char report_byte[63];
+    struct
+    {
+        unsigned char report;
+        unsigned char length;
+        unsigned char remote_order;
+        unsigned char local_order;
+        unsigned int crc_unique;
+        union
+        {
+            unsigned int payload_word[14];
+            unsigned char payload_byte[56];
+        };
+    };
+};
 
-		/* Wakeup host and device */
-		uhc_resume();
-	}
+struct apollo_usb_data
+{
+    union apollo_report report_out;
+    int length_out;
+    union apollo_report report_in;
+    int length_in;
+    unsigned char upstream_order;
+    unsigned char downstream_order;
+} glucose_usb_data;
+static unsigned int crc_unique(unsigned int * data, unsigned int word_count)
+{
+    const unsigned int poly[16] =
+    {
+        0x00000000, 0x04c11db7, 0x09823b6e, 0x0d4326d9, 0x130476dc, 0x17c56b6b, 0x1a864db2, 0x1e475005,
+        0x2608edb8, 0x22c9f00f, 0x2f8ad6d6, 0x2b4bcb61, 0x350c9b64, 0x31cd86d3, 0x3c8ea00a, 0x384fbdbd
+    };
+    unsigned int remainder= 0xffffffffL;
+
+    for(unsigned int i=0;i<word_count;i++)
+    {
+        remainder ^= data[i];
+        for(int j=0;j<8;j++)
+            remainder = (remainder << 4) ^ poly[remainder >> 28];
+    }
+
+    return remainder;
 }
 
-/**
- * \brief Initializes and enables interrupt pin change
- */
-static void ui_enable_asynchronous_interrupt(void)
-{
-	/* Initialize EIC for button wakeup */
-	struct extint_chan_conf eint_chan_conf;
-	extint_chan_get_config_defaults(&eint_chan_conf);
 
-	eint_chan_conf.gpio_pin            = BUTTON_0_EIC_PIN;
-	eint_chan_conf.gpio_pin_mux        = BUTTON_0_EIC_MUX;
-	eint_chan_conf.detection_criteria  = EXTINT_DETECT_FALLING;
-	eint_chan_conf.filter_input_signal = true;
-	extint_chan_set_config(BUTTON_0_EIC_LINE, &eint_chan_conf);
-	extint_register_callback(UI_WAKEUP_HANDLER,
-			BUTTON_0_EIC_LINE,
-			EXTINT_CALLBACK_TYPE_DETECT);
-	extint_chan_clear_detected(BUTTON_0_EIC_LINE);
-	extint_chan_enable_callback(BUTTON_0_EIC_LINE,
-			EXTINT_CALLBACK_TYPE_DETECT);
+static void apollo_sync(unsigned char class)
+{
+    glucose_usb_data.report_out.report = 0x0D;
+    glucose_usb_data.report_out.length = 4;
+    glucose_usb_data.report_out.remote_order = glucose_usb_data.upstream_order;
+    glucose_usb_data.report_out.local_order = glucose_usb_data.downstream_order;
+    glucose_usb_data.report_out.report_byte[4] = 0;
+    glucose_usb_data.report_out.report_byte[5] = class;
+    usb_send_report(glucose_usb_data.report_out.report_byte);
+    for(int i=0;i<14;i++)
+        glucose_usb_data.report_out.report_word[i] = 0;
+
+    glucose_usb_data.length_out = 0;
 }
 
-/**
- * \brief Disables interrupt pin change
- */
-static void ui_disable_asynchronous_interrupt(void)
+static void apollo_send_raw_packet(unsigned char * data, int length)
 {
-	extint_chan_disable_callback(BUTTON_0_EIC_LINE,
-			EXTINT_CALLBACK_TYPE_DETECT);
+    for(int i=0; i < length; i++)
+        glucose_usb_data.report_out.report_byte[i] = data[i];
+
+    usb_send_report(glucose_usb_data.report_out.report_byte);
+
+    for(int i=0;i<14;i++)
+        glucose_usb_data.report_out.report_word[i] = 0;
 }
 
-/*! @} */
-
-/**
- * \name Main user interface functions
- * @{
- */
-void ui_init(void)
+static void apollo_read_raw_packet()
 {
-	/* Initialize LEDs */
-	LED_Off(LED_0_PIN);
+    usb_read_report(glucose_usb_data.report_in.report_byte);
+}
+static void apollo_append_report_out(unsigned char * data, int length)
+{
+    for(int i=0; i < length; i++)
+    {
+        if(glucose_usb_data.length_out == 0)//double first byte fit up to 127 bytes length
+        {
+            glucose_usb_data.report_out.payload_byte[glucose_usb_data.length_out] = data[i];
+            glucose_usb_data.length_out ++;
+        }
+        glucose_usb_data.report_out.payload_byte[glucose_usb_data.length_out] = data[i];
+        glucose_usb_data.length_out ++;
+    }
 }
 
-void ui_usb_mode_change(bool b_host_mode)
+static void apollo_flush_report_out()
 {
-	if (b_host_mode) {
-		LED_On(LED_0_PIN);
-	} else {
-		LED_Off(LED_0_PIN);
-	}
+    if(glucose_usb_data.length_out == 0)
+    {
+        return;
+    }
+    else if(glucose_usb_data.length_out == 2) // 1 byte only
+    {
+        glucose_usb_data.length_out = 1;
+        glucose_usb_data.report_out.payload_byte[1] = 0;
+    }
+    else
+    {
+        glucose_usb_data.report_out.payload_byte[0] = (glucose_usb_data.length_out - 2) | 0x80;
+    }
+    glucose_usb_data.report_out.report = 0x0A;
+    glucose_usb_data.report_out.length = glucose_usb_data.length_out + 6;
+    glucose_usb_data.report_out.remote_order = glucose_usb_data.upstream_order;
+    glucose_usb_data.report_out.local_order = glucose_usb_data.downstream_order;
+    glucose_usb_data.report_out.crc_unique = crc_unique(glucose_usb_data.report_out.payload_word, (glucose_usb_data.length_out + 3) >> 2);
+
+    usb_send_report(glucose_usb_data.report_out.report_byte);
+
+    for(int i=0;i<14;i++)
+        glucose_usb_data.report_out.report_word[i] = 0;
+    glucose_usb_data.downstream_order ++;
+    glucose_usb_data.length_out = 0;
+}
+static void apollo_fetch_report_in()
+{
+    int pending = 1;
+    while(pending)
+    {
+        usb_read_report(glucose_usb_data.report_in.report_byte);
+        switch(glucose_usb_data.report_in.report)
+        {
+        case 0x0B:
+            if(glucose_usb_data.report_in.local_order != glucose_usb_data.upstream_order)
+            {
+                apollo_sync(0);
+                break;
+            }
+            pending = 0;
+            glucose_usb_data.upstream_order ++;
+            if(glucose_usb_data.upstream_order & 0x3)
+                apollo_sync(0);
+            break;
+        case 0x0C:
+            apollo_sync(0);
+            break;
+        }
+    }
 }
 
-/*! @} */
-
-/**
- * \name Host mode user interface functions
- * @{
- */
-
-/*! Status of device enumeration */
-static uhc_enum_status_t ui_enum_status = UHC_ENUM_DISCONNECT;
-/*! Blink frequency depending on device speed */
-static uint16_t ui_device_speed_blink;
-/*! Manages device mouse button down */
-static uint8_t ui_nb_down = 0;
-/*! Manages device mouse move */
-static bool ui_move = false;
-
-void ui_usb_vbus_change(bool b_vbus_present)
+static void apollo_init()
 {
-	UNUSED(b_vbus_present);
+    for(int i=0;i<14;i++)
+        glucose_usb_data.report_out.report_word[i] = 0;
+    glucose_usb_data.length_out = 0;
+    glucose_usb_data.upstream_order = 0;
+    glucose_usb_data.downstream_order = 0;
+
+    unsigned char cmd[2];
+    cmd[0] = 0x04; cmd[1] = 0x00;
+    apollo_send_raw_packet(cmd, 2);
+    apollo_read_raw_packet();
+
+    apollo_sync(2);
+
+    //serial number
+    cmd[0] = 0x05; cmd[1] = 0x00;
+    apollo_send_raw_packet(cmd, 2);
+    apollo_read_raw_packet();
+    //software version
+    cmd[0] = 0x15; cmd[1] = 0x00;
+    apollo_send_raw_packet(cmd, 2);
+    apollo_read_raw_packet();
+
+    cmd[0] = 0x01; cmd[1] = 0x00;
+    apollo_send_raw_packet(cmd, 2);
+    apollo_read_raw_packet();
+
+    unsigned char dbrnum[10] = {0x21, 0x08, 0x24, 0x64, 0x62, 0x72, 0x6E, 0x75, 0x6D, 0x3F};
+    apollo_send_raw_packet(dbrnum, 10);
+    apollo_read_raw_packet();
+}
+static void apollo_get_recorder()
+{
+    //get first packet
+    do
+    {
+        apollo_fetch_report_in();
+    }while(glucose_usb_data.report_in.length == 0x3e);
+/*
+    int bytes_left = 0, i = 0;
+    while(glucose_usb_data.report_in.payload_byte[i] >= 128)
+    {
+        bytes_left = (glucose_usb_data.report_in.payload_byte[i] & 0x7F) << (i*7);
+        i++;
+    }
+    bytes_left -= (glucose_usb_data.report_in.length - 6);
+
+    while(bytes_left > 0)
+    {
+        apollo_fetch_report_in();
+        bytes_left -= (glucose_usb_data.report_in.length - 6);
+    }
+*/
 }
 
-void ui_usb_vbus_error(void)
+static void apollo_req_recorder_1byte(unsigned char type)
 {
-	/* Not used for SAMD21 */
+    apollo_append_report_out(&type, 1);
+    apollo_flush_report_out();
+
+    type = 0x7D;
+    apollo_append_report_out(&type, 1);
+    apollo_flush_report_out();
+
+    apollo_get_recorder();
 }
 
-void ui_usb_connection_event(uhc_device_t *dev, bool b_present)
+
+static void apollo_req_recorder_2byte(unsigned char typel, unsigned char typeh)
 {
-	UNUSED(dev);
-	if (!b_present) {
-		LED_On(LED_0_PIN);
-		ui_enum_status = UHC_ENUM_DISCONNECT;
-	}
-}
+    apollo_append_report_out(&typel, 1);
+    apollo_append_report_out(&typeh, 1);
+    apollo_flush_report_out();
 
-void ui_usb_enum_event(uhc_device_t *dev, uhc_enum_status_t status)
+    typel = 0x7D;
+    apollo_append_report_out(&typel, 1);
+    apollo_flush_report_out();
+
+    apollo_get_recorder();
+}
+void ui_init()
 {
-	ui_enum_status = status;
-	if (ui_enum_status == UHC_ENUM_SUCCESS) {
-		switch (dev->speed) {
-		case UHD_SPEED_HIGH:
-			ui_device_speed_blink = 250;
-			break;
+	static bool init = false;
+	if (init)
+		return;
+	init = true;
+    apollo_init();
 
-		case UHD_SPEED_FULL:
-			ui_device_speed_blink = 500;
-			break;
-
-		case UHD_SPEED_LOW:
-		default:
-			ui_device_speed_blink = 1000;
-			break;
-		}
-	}
+    apollo_req_recorder_2byte(0x31, 0x00);//读取血糖历史数据
+    apollo_req_recorder_2byte(0x31, 0x06);//读取血糖单次测量数据
+    apollo_req_recorder_1byte(0x41);//读取时间
 }
-
-void ui_usb_wakeup_event(void)
-{
-	ui_disable_asynchronous_interrupt();
-}
-
-void ui_usb_sof_event(void)
-{
-	bool b_btn_state;
-	static bool btn_suspend_and_remotewakeup = false;
-	static uint16_t counter_sof = 0;
-
-	if (ui_enum_status == UHC_ENUM_SUCCESS) {
-		/* Display device enumerated and in active mode */
-		if (++counter_sof > ui_device_speed_blink) {
-			counter_sof = 0;
-			LED_Toggle(LED_0_PIN);
-		}
-
-		/* Scan button to enter in suspend mode and remote wakeup */
-		b_btn_state = !port_pin_get_input_level(BUTTON_0_PIN);
-		if (b_btn_state != btn_suspend_and_remotewakeup) {
-			/* Button have changed */
-			btn_suspend_and_remotewakeup = b_btn_state;
-			if (b_btn_state) {
-				/* Button has been pressed */
-				ui_enable_asynchronous_interrupt();
-				LED_Off(LED_0_PIN);
-				uhc_suspend(true);
-				return;
-			}
-		}
-
-		/* Power on a LED when the mouse button down */
-		if (ui_nb_down) {
-			LED_On(LED_0_PIN);
-		}
-		/* Power on a LED when the mouse moves */
-		if (ui_move) {
-			ui_move = false;
-			LED_On(LED_0_PIN);
-		}
-	}
-}
-
-static void ui_uhi_hid_mouse_btn(bool b_state)
-{
-	if (b_state) {
-		ui_nb_down++;
-	} else {
-		ui_nb_down--;
-	}
-}
-
-void ui_uhi_hid_mouse_btn_left(bool b_state)
-{
-	ui_uhi_hid_mouse_btn(b_state);
-}
-
-void ui_uhi_hid_mouse_btn_right(bool b_state)
-{
-	ui_uhi_hid_mouse_btn(b_state);
-}
-
-void ui_uhi_hid_mouse_btn_middle(bool b_state)
-{
-	ui_uhi_hid_mouse_btn(b_state);
-}
-
-void ui_uhi_hid_mouse_move(int8_t x, int8_t y, int8_t scroll)
-{
-	UNUSED(x);
-	UNUSED(y);
-	UNUSED(scroll);
-	ui_move = true;
-}
-
-/*! @} */
-
-/**
- * \defgroup UI User Interface
- *
- * Human interface on SAM D21 Xplained Pro:
- * - Led 0 is on when it's host and there is no device connected
- * - Led 0 blinks when a HID mouse is enumerated and USB in idle mode
- *   - The blink is slow (1s) with low speed device
- *   - The blink is normal (0.5s) with full speed device
- *   - The blink is fast (0.25s) with high speed device
- * - Led 0 is on when a HID mouse button is pressed
- * - Button SW0 allows to enter the device in suspend mode with remote wakeup
- *   feature authorized
- * - Only SW0 button can be used to wakeup USB device in suspend mode
- */

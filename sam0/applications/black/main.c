@@ -55,7 +55,7 @@ static void black_system_init(void)
 #endif
 	/* Enable the global interrupts */
 	cpu_irq_enable();
-	//ui_init();
+	
 	/* Start USB host stack */
 	uhc_start();
 	gprs_config();
@@ -105,13 +105,14 @@ int main(void)
 		if (libre_found) {
 			if (uhc_is_suspend())
 				uhc_resume();
-			if (!uhc_is_suspend()) {
+			if (!uhc_is_suspend()) {				
+				ui_init();
 				if (cur_ts == -1 || bak_ts == -1) {
 					cur_ts = get_dev_ts(cur_libre_serial_no,32);
 					bak_ts = cur_ts;
 					printf("%s inserted , ts %d\r\n",cur_libre_serial_no,(int)cur_ts);
 				}
-				if (get_cap_data(&xt_data, &xt_len)) {
+				if (1/*get_cap_data(&xt_data, &xt_len)*/) {
 					j = 0;
 					uint32_t time = 0;
 					printf("get %d bytes from sugar\r\n", (int)xt_len);
