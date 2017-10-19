@@ -58,6 +58,7 @@ static void black_system_init(void)
 	
 	/* Start USB host stack */
 	uhc_start();
+	//uhd_send_reset(NULL);
 	gprs_config();
 	if (history_init())
 		printf("load history done\r\n");

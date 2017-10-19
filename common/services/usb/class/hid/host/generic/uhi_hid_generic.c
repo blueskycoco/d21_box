@@ -176,11 +176,11 @@ bool usb_send_report(uint8_t *cmd)
 {	
 	usb_setup_req_t req;
 	int i = 0;
-	printf("USB send:\r\n");
-	for(i = 0; i < 64; i++) {
-        printf("%02X ", cmd[i]);
-    }
-    printf("\r\n");
+	//printf("USB send:\r\n");
+	//for(i = 0; i < 64; i++) {
+    //    printf("%02X ", cmd[i]);
+   // }
+    //printf("\r\n");
 	req.bmRequestType = USB_REQ_RECIP_INTERFACE | USB_REQ_TYPE_CLASS | USB_REQ_DIR_OUT;
 	req.bRequest = 0x09;
 	req.wValue = 0x2000;
@@ -194,8 +194,7 @@ bool usb_send_report(uint8_t *cmd)
 		printf("get cap data failed\r\n");	
 		return false;
 	}
-	read_flag = false;
-	while(read_flag == false);
+	delay_ms(1);
 	return true;
 }
 void usb_read_report(uint8_t *data)
@@ -203,13 +202,8 @@ void usb_read_report(uint8_t *data)
 	int i;
 	read_flag = false;
 	uhi_hid_generic_start_trans_report(uhi_hid_generic_dev.dev->address);
-	while(read_flag == false);
-	printf("USB read:\r\n");
-	for (i = 0; i < uhi_hid_generic_dev.report_size; i++)
-	{
-		printf("%02X ", uhi_hid_generic_dev.report[i]);
-	}
-	printf("\r\n");
+	//while(read_flag == false);
+	delay_ms(1);
 	memcpy(data, uhi_hid_generic_dev.report,uhi_hid_generic_dev.report_size);
 }
 void uhi_hid_generic_enable(uhc_device_t* dev)
@@ -217,7 +211,7 @@ void uhi_hid_generic_enable(uhc_device_t* dev)
 	if (uhi_hid_generic_dev.dev != dev) {
 		return;
 	}
-
+	
 	set_idle(dev);	
 	libre_found = true;
 }
@@ -248,8 +242,8 @@ static void uhi_hid_generic_report_reception(
 {
 	int i;
 	UNUSED(ep);
-	printf("uhi_hid_generic_report_reception ==> \r\nadd %x, ep %x, status %d, len %d\r\n",
-		add,ep,status,(int)nb_transfered);
+	//printf("uhi_hid_generic_report_reception ==> \r\nadd %x, ep %x, status %d, len %d\r\n",
+	//	add,ep,status,(int)nb_transfered);
 	if ((status == UHD_TRANS_NOTRESPONDING) || (status == UHD_TRANS_TIMEOUT)) {
 		uhi_hid_generic_start_trans_report(add);
 		return; // HID mouse transfer restart
@@ -261,6 +255,12 @@ static void uhi_hid_generic_report_reception(
 		return;
 	}
 	
+	//printf("USB read:\r\n");
+	//for (i = 0; i < uhi_hid_generic_dev.report_size; i++)
+	//{
+	//	printf("%02X ", uhi_hid_generic_dev.report[i]);
+	//}
+	//printf("\r\n");
 	/*
 	//add more code here to parse cap data, ts, database etc
 	if (uhi_hid_generic_dev.report[0] == 0x06)

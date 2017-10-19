@@ -46,7 +46,9 @@
 
 #include <asf.h>
 #include "box_usb.h"
+#include "calendar.h"
 
+extern bool libre_found;
 unsigned char response[64] = {0};
 
 unsigned char recv_final_flag = 0;
@@ -81,6 +83,116 @@ struct apollo_usb_data
     unsigned char upstream_order;
     unsigned char downstream_order;
 } glucose_usb_data;
+
+void submit_serial(unsigned char * serial)
+{
+	printf("Serial Number: %s\r\n", serial);
+}
+
+void submit_recorder(unsigned char cate, unsigned char data, unsigned short num, unsigned int time)
+{
+	struct calendar_date date_out;
+	calendar_timestamp_to_date(time, &date_out);
+	printf("Num\t%5d\tTime\t%4d-%02d-%02d %02d:%02d:%02d\tCate:\t%1d\tData\t%3d\r\n", num, date_out.year,
+			date_out.month, date_out.date, date_out.hour, date_out.minute, date_out.second, cate, data);
+}
+
+void submit_date_time(unsigned char second, unsigned char minute, unsigned char hour, unsigned char day, unsigned char month, unsigned int year)
+{
+	printf("Date-Time is: %4d-%02d-%02d %2d:%02d:%02d\r\n", year, month, day, hour, minute, second);
+}
+
+struct stream_handler
+{
+	int state;
+	int length;
+	int data_index;
+	int len_index;
+	unsigned char type;
+	union
+	{
+		struct
+		{
+			unsigned char cate;
+			unsigned char data;
+			unsigned short num;
+			unsigned int time;
+			uint32_t record_len;
+		};
+		unsigned char bytes[8];
+	} record;
+} streamer;
+
+void apollo_byte_stream_push(unsigned char byte)
+{
+#define HANDLER_IDLE	(0)
+#define HANDLER_LEN	(1)
+#define HANDLER_TYPE	(2)
+#define HANDLER_DATA	(3)
+	switch(streamer.state)
+	{
+	case HANDLER_IDLE:
+		if(byte > 0x80)
+		{
+			streamer.state = HANDLER_LEN;
+			streamer.length = byte & 0x7f;
+			streamer.len_index = 1;
+		}
+		break;
+	case HANDLER_LEN:
+		if(byte > 0x80)
+		{
+			streamer.state = HANDLER_LEN;
+			streamer.length += (byte & 0x7f) << (7 * streamer.len_index);
+			break;
+		}
+		streamer.state = HANDLER_TYPE;
+	case HANDLER_TYPE:
+		streamer.type = byte;
+		streamer.state = HANDLER_DATA;
+		streamer.data_index = 0;
+		streamer.record.cate = 0xFF;
+		break;
+	case HANDLER_DATA:
+		if(streamer.type == 0x31)
+		{
+			switch(streamer.data_index)
+			{
+			case 1:  streamer.record.bytes[2] = byte; break;
+			case 2:  streamer.record.bytes[3] = byte; break;
+			case 3:  streamer.record.cate = byte == 0x0C ? 0 : byte == 0x02 ? 1 : 0xFF; break;
+			case 4:  if(byte != 0x80) streamer.record.cate = 0xFF; break;
+			case 5:  streamer.record.bytes[4] = byte; break;
+			case 6:  streamer.record.bytes[5] = byte; break;
+			case 7:  streamer.record.bytes[6] = byte; break;
+			case 8:  streamer.record.bytes[7] = byte; break;
+			case 9:  streamer.record.time += ((unsigned int)byte); break;
+			case 10: streamer.record.time += ((unsigned int)byte) << 8; break;
+			case 11: streamer.record.time += ((unsigned int)byte) << 16; break;
+			case 12: streamer.record.time += ((unsigned int)byte) << 24; break;
+			case 13: streamer.record.bytes[1] = byte;
+				 if(streamer.record.cate != 0xFF && streamer.record.data != 0)
+				 {
+				 	submit_recorder(streamer.record.cate, streamer.record.data, streamer.record.num, streamer.record.time);
+					streamer.record.record_len++;
+				 }
+			default: break;
+			}
+		}
+		streamer.data_index ++;
+		streamer.length --;
+		if(streamer.length == 0)
+		{
+			streamer.state = HANDLER_IDLE;
+			streamer.data_index = 0;
+			streamer.len_index = 0;			
+		}
+		break;
+	default:
+		break;
+	}
+}
+
 static unsigned int crc_unique(unsigned int * data, unsigned int word_count)
 {
     const unsigned int poly[16] =
@@ -131,18 +243,15 @@ static void apollo_read_raw_packet()
 {
     usb_read_report(glucose_usb_data.report_in.report_byte);
 }
-static void apollo_append_report_out(unsigned char * data, int length)
+void apollo_append_report_out(unsigned char data)
 {
-    for(int i=0; i < length; i++)
-    {
         if(glucose_usb_data.length_out == 0)//double first byte fit up to 127 bytes length
         {
-            glucose_usb_data.report_out.payload_byte[glucose_usb_data.length_out] = data[i];
+		glucose_usb_data.report_out.payload_byte[glucose_usb_data.length_out] = data;
             glucose_usb_data.length_out ++;
         }
-        glucose_usb_data.report_out.payload_byte[glucose_usb_data.length_out] = data[i];
+	glucose_usb_data.report_out.payload_byte[glucose_usb_data.length_out] = data;
         glucose_usb_data.length_out ++;
-    }
 }
 
 static void apollo_flush_report_out()
@@ -178,6 +287,8 @@ static void apollo_fetch_report_in()
     int pending = 1;
     while(pending)
     {
+    	if (!libre_found)
+			break;
         usb_read_report(glucose_usb_data.report_in.report_byte);
         switch(glucose_usb_data.report_in.report)
         {
@@ -213,11 +324,12 @@ static void apollo_init()
     apollo_read_raw_packet();
 
     apollo_sync(2);
-
+	delay_ms(200);
     //serial number
     cmd[0] = 0x05; cmd[1] = 0x00;
     apollo_send_raw_packet(cmd, 2);
     apollo_read_raw_packet();
+	submit_serial(glucose_usb_data.report_in.report_byte + 2);
     //software version
     cmd[0] = 0x15; cmd[1] = 0x00;
     apollo_send_raw_packet(cmd, 2);
@@ -227,68 +339,74 @@ static void apollo_init()
     apollo_send_raw_packet(cmd, 2);
     apollo_read_raw_packet();
 
-    unsigned char dbrnum[10] = {0x21, 0x08, 0x24, 0x64, 0x62, 0x72, 0x6E, 0x75, 0x6D, 0x3F};
-    apollo_send_raw_packet(dbrnum, 10);
-    apollo_read_raw_packet();
+//	unsigned char dbrnum[] = {0x21, 0x08, 0x24, 0x64, 0x62, 0x72, 0x6E, 0x75, 0x6D, 0x3F};
+//	apollo_send_raw_packet(dbrnum, 10);
+//	apollo_read_raw_packet();
 }
-static void apollo_get_recorder()
+
+static void apollo_req_recorder(void)
 {
-    //get first packet
-    do
-    {
-        apollo_fetch_report_in();
-    }while(glucose_usb_data.report_in.length == 0x3e);
-/*
-    int bytes_left = 0, i = 0;
-    while(glucose_usb_data.report_in.payload_byte[i] >= 128)
-    {
-        bytes_left = (glucose_usb_data.report_in.payload_byte[i] & 0x7F) << (i*7);
-        i++;
-    }
-    bytes_left -= (glucose_usb_data.report_in.length - 6);
+	apollo_append_report_out(0x31);
+	apollo_append_report_out(0x00);
+	apollo_flush_report_out();
+	apollo_append_report_out(0x31);
+	apollo_append_report_out(0x06);
+	apollo_flush_report_out();
+	apollo_append_report_out(0x7D);
+	apollo_flush_report_out();
+	do
+	{
+		apollo_fetch_report_in();
+		for(int i = 0; i < glucose_usb_data.report_in.length - 6; i++)
+			apollo_byte_stream_push(glucose_usb_data.report_in.payload_byte[i]);
 
-    while(bytes_left > 0)
-    {
-        apollo_fetch_report_in();
-        bytes_left -= (glucose_usb_data.report_in.length - 6);
-    }
-*/
+	}while(glucose_usb_data.report_in.length == 0x3e);
 }
 
-static void apollo_req_recorder_1byte(unsigned char type)
+void apollo_req_date_time(void)
 {
-    apollo_append_report_out(&type, 1);
-    apollo_flush_report_out();
-
-    type = 0x7D;
-    apollo_append_report_out(&type, 1);
-    apollo_flush_report_out();
-
-    apollo_get_recorder();
+	apollo_append_report_out(0x41);
+	apollo_flush_report_out();
+	apollo_append_report_out(0x7D);
+	apollo_flush_report_out();
+	apollo_fetch_report_in();
+	submit_date_time(
+			glucose_usb_data.report_in.payload_byte[2], 
+			glucose_usb_data.report_in.payload_byte[3], 
+			glucose_usb_data.report_in.payload_byte[4], 
+			glucose_usb_data.report_in.payload_byte[5], 
+			glucose_usb_data.report_in.payload_byte[6], 
+			glucose_usb_data.report_in.payload_byte[7] | glucose_usb_data.report_in.payload_byte[8] << 8
+			);
 }
 
-
-static void apollo_req_recorder_2byte(unsigned char typel, unsigned char typeh)
+void apollo_set_date_time(unsigned char second, unsigned char minute, unsigned char hour, unsigned char day, unsigned char month, unsigned int year)
 {
-    apollo_append_report_out(&typel, 1);
-    apollo_append_report_out(&typeh, 1);
-    apollo_flush_report_out();
-
-    typel = 0x7D;
-    apollo_append_report_out(&typel, 1);
-    apollo_flush_report_out();
-
-    apollo_get_recorder();
+	apollo_append_report_out(0x42);
+	apollo_append_report_out(second);
+	apollo_append_report_out(minute);
+	apollo_append_report_out(hour);
+	apollo_append_report_out(day);
+	apollo_append_report_out(month);
+	apollo_append_report_out(year & 0xFF);
+	apollo_append_report_out(year >> 8);
+	apollo_append_report_out(0x01);
+	apollo_flush_report_out();
+	apollo_append_report_out(0x7D);
+	apollo_flush_report_out();
+	apollo_fetch_report_in();
 }
+
 void ui_init()
 {
 	static bool init = false;
-	if (init)
+	if (init || !libre_found)
 		return;
 	init = true;
     apollo_init();
 
-    apollo_req_recorder_2byte(0x31, 0x00);//读取血糖历史数据
-    apollo_req_recorder_2byte(0x31, 0x06);//读取血糖单次测量数据
-    apollo_req_recorder_1byte(0x41);//读取时间
+    apollo_req_recorder();
+	apollo_req_date_time();
+	
+	printf("record_len = %d\n", streamer.record.record_len);
 }
