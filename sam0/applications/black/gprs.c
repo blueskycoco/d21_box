@@ -2,6 +2,8 @@
 #include <string.h>
 #include "conf_uart_serial.h"
 #include "gprs.h"
+#include "misc.h"
+#define MAX_TRY 3
 static struct usart_module gprs_uart_module;
 
 static void gprs_init(void)
@@ -148,8 +150,9 @@ void test_gprs(void)
 	if (strlen(out) != 0)
 		printf("http post response %s\r\n",out);
 }
-bool upload_data(char *json, uint32_t *time)
+uint8_t upload_data(char *json, uint32_t *time)
 {
+	uint8_t result = 0;
 	char out[256] = {0};
 	int n = 0;
 	while (n < MAX_TRY) {
@@ -164,4 +167,5 @@ bool upload_data(char *json, uint32_t *time)
 		}
 		n++;
 	}
+	return result;
 }

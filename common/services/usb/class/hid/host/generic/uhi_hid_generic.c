@@ -56,7 +56,6 @@ bool read_flag = false;
 # error USB HUB support is not implemented on UHI mouse
 #endif
 
-uint8_t cur_libre_serial_no[32] = {0};
 typedef struct {
 	uhc_device_t *dev;
 	usb_ep_t ep_in;
@@ -69,7 +68,7 @@ static uhi_hid_generic_dev_t uhi_hid_generic_dev = {
 	.report = NULL,
 	};
 
-static void uhi_hid_generic_start_trans_report(usb_add_t add);
+static bool uhi_hid_generic_start_trans_report(usb_add_t add);
 static void uhi_hid_generic_report_reception(
 		usb_add_t add,
 		usb_ep_t ep,
@@ -197,14 +196,17 @@ bool usb_send_report(uint8_t *cmd)
 	delay_ms(1);
 	return true;
 }
-void usb_read_report(uint8_t *data)
+bool usb_read_report(uint8_t *data)
 {
 	int i;
 	read_flag = false;
-	uhi_hid_generic_start_trans_report(uhi_hid_generic_dev.dev->address);
+	bool result = uhi_hid_generic_start_trans_report(uhi_hid_generic_dev.dev->address);
 	//while(read_flag == false);
 	delay_ms(1);
+	if (result)
 	memcpy(data, uhi_hid_generic_dev.report,uhi_hid_generic_dev.report_size);
+
+	return result;
 }
 void uhi_hid_generic_enable(uhc_device_t* dev)
 {
@@ -225,13 +227,14 @@ void uhi_hid_generic_uninstall(uhc_device_t* dev)
 	Assert(uhi_hid_generic_dev.report!=NULL);
 	free(uhi_hid_generic_dev.report);
 }
-static void uhi_hid_generic_start_trans_report(usb_add_t add)
+static bool uhi_hid_generic_start_trans_report(usb_add_t add)
 {
 	// Start transfer on interrupt endpoint IN
 	bool ret = uhd_ep_run(add, uhi_hid_generic_dev.ep_in, true, uhi_hid_generic_dev.report,
 			uhi_hid_generic_dev.report_size, 0, uhi_hid_generic_report_reception);
 	if (!ret)
 		printf("uhd ep run failed\r\n");
+	return ret;
 }
 
 static void uhi_hid_generic_report_reception(
