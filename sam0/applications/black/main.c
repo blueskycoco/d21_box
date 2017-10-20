@@ -18,6 +18,7 @@ extern bool libre_found;
 
 int32_t cur_ts = -1;
 int32_t bak_ts = -1;
+int32_t max_ts = 0;
 uint32_t server_time = 0;
 extern uint8_t cur_libre_serial_no[32];
 char device_serial_no[33] = {0};
@@ -92,6 +93,8 @@ void upload_json(uint8_t *xt_data, uint32_t xt_len)
 			 xt_data[i+5] <<  0;
 		if (ts > cur_ts) {
 			/*check ts > last ts*/
+			if (ts > max_ts)
+				max_ts = ts;
 			int16_t gid = xt_data[i] << 8 | xt_data[i+1];
 			uint32_t bloodSugar = xt_data[i+6]*142+22;
 			//printf("add ts %d,gid %d, blood %d to list\r\n", (int)ts,
@@ -102,12 +105,12 @@ void upload_json(uint8_t *xt_data, uint32_t xt_len)
 			//printf("num %d\r\n", upload_num);
 			if (upload_num >= MAX_JSON) {
 				/*json item > max_json*/
-				/*if (upload_data(json,&server_time))	{
-					if (ts > bak_ts)
-						bak_ts = ts;
-				}*/
-				printf("\r\nbegin upload\r\n");
-				printf("%s", json);
+				if (upload_data(json,&server_time))	{
+					if (max_ts > bak_ts)
+						bak_ts = max_ts;
+				}
+				//printf("\r\nbegin upload\r\n");
+				//printf("%s", json);
 				free(json);
 				json = NULL;
 				upload_num=0;
@@ -115,14 +118,14 @@ void upload_json(uint8_t *xt_data, uint32_t xt_len)
 		}
 		i=i+7;
 	}
-	printf("\r\nupload last data\r\n");
+	//printf("\r\nupload last data\r\n");
 	if (upload_num > 0) {
 		/*upload num < MAX_JSON*/
-		/*if (upload_data(json,&server_time)) {
-			if (ts > bak_ts)
-				bak_ts = ts;
-		}*/
-		printf("%s\r\n",json);
+		if (upload_data(json,&server_time)) {
+			if (max_ts > bak_ts)
+				bak_ts = max_ts;
+		}
+		//printf("%s\r\n",json);
 		free(json);
 		json = NULL;
 		upload_num=0;
@@ -165,7 +168,8 @@ int main(void)
 	printf("ID %x %x %x %x \r\n", (unsigned int)serial_no[0],
 			(unsigned int)serial_no[1], (unsigned int)serial_no[2], 
 			(unsigned int)serial_no[3]);
-	init_rtc();
+	init_rtc();				
+	do_it("{\"status\":0,\"message\":\"????\",\"ext\":{\"systemTime\":1508509207661},\"returnTime\":1508509207656,\"domain\":0}", &server_time);
 	while (true) {
 		if (libre_found) {
 			if (uhc_is_suspend())

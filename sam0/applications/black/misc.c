@@ -14,7 +14,7 @@
 #define XT 		"bloodSugar"
 #define TS		"actionTime"
 #define GID		"gid"
-#define DID		"device_id"
+#define DID		"deviceId"
 #define JSON "{\"data\": {\"type\": %d,\"bloodSugar\": %d.%d,\"actionTime\": %d,\"gid\": %d},\"deviceId\": \"%s\"}"
 #if CONSOLE_OUTPUT_ENABLED
 /**
@@ -98,7 +98,7 @@ bool do_it(uint8_t *in, uint32_t *time)
 		if (ts) {
 			if (ts->type == cJSON_Number) {
 				*time = ts->valueint;
-				printf("systemTime: %d\r\n", (int)*time);
+				printf("systemTime: %d\r\n", ts->valuedouble);
 			}
 		}
 
