@@ -148,3 +148,20 @@ void test_gprs(void)
 	if (strlen(out) != 0)
 		printf("http post response %s\r\n",out);
 }
+bool upload_data(char *json, uint32_t *time)
+{
+	char out[256] = {0};
+	int n = 0;
+	while (n < MAX_TRY) {
+		memset(out,0,256);
+		result = http_post((uint8_t *)json,strlen(json)
+									,out);
+		if (result) {
+			do_it((uint8_t *)out, time);
+			printf("send server %s, \r\nrcv %s, time %d\r\n",
+					json, out, (int)*time);
+			break;
+		}
+		n++;
+	}
+}

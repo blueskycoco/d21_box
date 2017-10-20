@@ -93,8 +93,8 @@ void submit_recorder(unsigned char cate, unsigned char data, unsigned short num,
 {
 	struct calendar_date date_out;
 	calendar_timestamp_to_date(time, &date_out);
-	printf("Num\t%5d\tTime\t%4d-%02d-%02d %02d:%02d:%02d\tCate:\t%1d\tData\t%3d\r\n", num, date_out.year,
-			date_out.month, date_out.date, date_out.hour, date_out.minute, date_out.second, cate, data);
+	printf("Num\t%5d\tTime\t%4d-%02d-%02d %02d:%02d:%02d\tData\t%3d\r\n", num, date_out.year,
+			date_out.month, date_out.date, date_out.hour, date_out.minute, date_out.second, data);
 }
 
 void submit_date_time(unsigned char second, unsigned char minute, unsigned char hour, unsigned char day, unsigned char month, unsigned int year)
@@ -399,10 +399,8 @@ void apollo_set_date_time(unsigned char second, unsigned char minute, unsigned c
 
 void ui_init()
 {
-	static bool init = false;
-	if (init || !libre_found)
+	if (!libre_found)
 		return;
-	init = true;
     apollo_init();
 
     apollo_req_recorder();
