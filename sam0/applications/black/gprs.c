@@ -6,7 +6,7 @@
 #include "calendar.h"
 #define MAX_TRY 3
 static struct usart_module gprs_uart_module;
-
+extern void ts2date(uint32_t time, struct calendar_date *date_out);
 static void gprs_init(void)
 {
 	struct usart_config usart_conf;
@@ -170,7 +170,7 @@ uint8_t upload_data(char *json, uint32_t *time)
 			while(out[i] != '{')
 				i++;
 			do_it((uint8_t *)out+i, time);
-			calendar_timestamp_to_date(time, &date_out);
+			ts2date(*time, &date_out);
 			printf("<SEND SERVER>\r\n%s\r\n<RCV>\r\n %s\r\n<SERVER TIME> %4d-%02d-%02d %02d:%02d:%02d\r\n",
 					json, out+i, date_out.year, date_out.month, date_out.date, date_out.hour, date_out.minute, date_out.second);
 			break;

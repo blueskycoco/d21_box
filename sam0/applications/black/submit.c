@@ -21,8 +21,8 @@ void submit_recorder(unsigned char cate, unsigned char data, unsigned short num,
 {
 	struct calendar_date date_out;
 	calendar_timestamp_to_date(time, &date_out);
-	printf("Num\t%5d\tTime\t%4d-%02d-%02d %02d:%02d:%02d\tData\t%3d\r\n", num, date_out.year,
-			date_out.month, date_out.date, date_out.hour, date_out.minute, date_out.second, data);
+	printf("Num\t%5d\tTime\t%4d-%02d-%02d %02d:%02d:%02d\tCate\t%d\tData\t%3d\r\n", num, date_out.year,
+			date_out.month, date_out.date, date_out.hour, date_out.minute, date_out.second, cate, data);
 	//printf("Num\t%5d\tTime\t%10d\tData\t%3d\r\n", num, time, data);
 	if (g_num == 4095) {
 		/* flush to spi flash*/

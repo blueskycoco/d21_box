@@ -5,6 +5,8 @@
 #include "conf_bootloader.h"
 #include "misc.h"
 #include <calendar.h>
+#include <time.h>
+
 #if CONSOLE_OUTPUT_ENABLED
 #include "conf_uart_serial.h"
 #endif
@@ -106,6 +108,26 @@ bool do_it(uint8_t *in, uint32_t *time)
 			cJSON_Delete(root);			
 	}
 	return result;
+}
+void ts2date(uint32_t time, struct calendar_date *date_out)
+{
+	char res[32] = {0};
+	char tmp[5] = {0};
+	struct tm lt;
+	localtime_r(&time, &lt);
+	strftime(res, sizeof(res), "%Y-%m-%d %H:%M:%S", &lt);
+	memcpy(tmp, res+5, 2);
+	date_out->month = atoi(tmp);
+	memcpy(tmp, res+8, 2);
+	date_out->date = atoi(tmp);
+	memcpy(tmp, res+11, 2);
+	date_out->hour= atoi(tmp) + 8;
+	memcpy(tmp, res+14, 2);
+	date_out->minute= atoi(tmp);
+	memcpy(tmp, res+17, 2);
+	date_out->second= atoi(tmp);
+	memcpy(tmp, res, 4);
+	date_out->year= atoi(tmp);
 }
 uint32_t date2ts(struct rtc_calendar_time date)
 {

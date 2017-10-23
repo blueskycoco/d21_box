@@ -5,6 +5,8 @@ char *build_json(char *old, char type, uint32_t bloodSugar, int actionTime, int 
 				char *device_id);
 uint32_t date2ts(struct rtc_calendar_time date);
 bool do_it(uint8_t *in, uint32_t *time);
+//void ts2date(uint32_t time, struct calendar_date *date_out);
+
 #if CONSOLE_OUTPUT_ENABLED
 void console_init(void);
 #endif
