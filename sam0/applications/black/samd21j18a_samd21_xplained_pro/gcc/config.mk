@@ -65,7 +65,9 @@ CSRCS = \
        sam0/applications/black/gprs.c \
        sam0/applications/black/history.c \
        sam0/applications/black/cJSON.c \
-       sam0/applications/black/box_usb.c \
+       sam0/applications/black/apollo.c \
+       sam0/applications/black/stream.c \
+       sam0/applications/black/submit.c \
        sam0/boards/samd21_xplained_pro/board_init.c       \
        sam0/drivers/bod/bod_sam_d_r_h/bod.c               \
        sam0/drivers/dma/dma.c                             \

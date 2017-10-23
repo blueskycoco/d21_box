@@ -98,7 +98,7 @@ bool do_it(uint8_t *in, uint32_t *time)
 		if (ts) {
 			if (ts->type == cJSON_Number) {
 				*time = ts->valueint;
-				printf("systemTime: %d\r\n", ts->valuedouble);
+				printf("systemTime: %d\r\n", *time);
 			}
 		}
 

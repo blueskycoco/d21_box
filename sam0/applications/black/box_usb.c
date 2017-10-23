@@ -304,14 +304,13 @@ static void apollo_flush_report_out()
     glucose_usb_data.downstream_order ++;
     glucose_usb_data.length_out = 0;
 }
-static void apollo_fetch_report_in()
+static bool apollo_fetch_report_in()
 {
     int pending = 1;
-    while(pending)
+	bool ret = true;
+    while(pending && ret && libre_found)
     {
-    	if (!libre_found)
-			break;
-        usb_read_report(glucose_usb_data.report_in.report_byte);
+        ret = usb_read_report(glucose_usb_data.report_in.report_byte);
         switch(glucose_usb_data.report_in.report)
         {
         case 0x0B:
@@ -330,6 +329,7 @@ static void apollo_fetch_report_in()
             break;
         }
     }
+	return ret;
 }
 
 bool apollo_init()
@@ -378,6 +378,7 @@ bool apollo_init()
 
 static void apollo_req_recorder(void)
 {
+	bool ret = true;
 	apollo_append_report_out(0x31);
 	apollo_append_report_out(0x00);
 	apollo_flush_report_out();
@@ -388,11 +389,11 @@ static void apollo_req_recorder(void)
 	apollo_flush_report_out();
 	do
 	{
-		apollo_fetch_report_in();
+		ret = apollo_fetch_report_in();
 		for(int i = 0; i < glucose_usb_data.report_in.length - 6; i++)
 			apollo_byte_stream_push(glucose_usb_data.report_in.payload_byte[i]);
 
-	}while(glucose_usb_data.report_in.length == 0x3e);
+	}while(glucose_usb_data.report_in.length == 0x3e && ret && libre_found);
 }
 
 void apollo_req_date_time(void)
