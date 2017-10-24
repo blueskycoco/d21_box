@@ -10,6 +10,7 @@
 #include "flash.h"
 #include "history.h"
 #include "calendar.h"
+#include "apollo.h"
 #define MAX_JSON 20
 extern bool libre_found;
 #if CONSOLE_OUTPUT_ENABLED
@@ -21,6 +22,7 @@ int32_t bak_ts = -1;
 int32_t max_ts = 0;
 uint32_t server_time = 0;
 extern uint8_t cur_libre_serial_no[32];
+extern void ts2date(uint32_t time, struct rtc_calendar_time *date_out);
 char device_serial_no[33] = {0};
 static void black_system_init(void)
 {
@@ -133,20 +135,16 @@ void upload_json(uint8_t *xt_data, uint32_t xt_len)
 }
 static void update_time(uint32_t time)
 {
-	struct calendar_date date;
 	struct rtc_calendar_time rtc_time;
 	/*set cur time*/
 	if (time != 0) {
-		calendar_timestamp_to_date(time, &date);
-		rtc_time.minute = date.minute;
-		rtc_time.second = date.second;
-		rtc_time.year = date.year;
-		rtc_time.month = date.month;
-		rtc_time.day = date.date+1;
-		rtc_time.hour = date.hour;
+		printf("begin to save time\r\n");
+		ts2date(time, &rtc_time);
 		set_rtc_time(rtc_time);
+		apollo_set_date_time(rtc_time.second,rtc_time.minute,rtc_time.hour,
+			rtc_time.day,rtc_time.month,rtc_time.year);
+		printf("end save time\r\n");
 	}
-	/*set sugar time*/
 
 	if (bak_ts > cur_ts) {
 		cur_ts = bak_ts;
@@ -176,10 +174,10 @@ int main(void)
 				uhc_resume();
 			delay_ms(100);
 			if (!uhc_is_suspend()) {
-				if (strlen(cur_libre_serial_no) == 0)
-					if (!apollo_init())
-						memset(cur_libre_serial_no, 0, 32);
-					
+				//if (strlen(cur_libre_serial_no) == 0)
+					//if (!apollo_init())
+					//	memset(cur_libre_serial_no, 0, 32);
+				apollo_init();	
 				if (strlen(cur_libre_serial_no) != 0) {
 					if (cur_ts == -1 || bak_ts == -1) {
 						cur_ts = get_dev_ts(cur_libre_serial_no,32);

@@ -3,10 +3,10 @@
 #include "conf_uart_serial.h"
 #include "gprs.h"
 #include "misc.h"
-#include "calendar.h"
+#include "rtc_calendar.h"
 #define MAX_TRY 3
 static struct usart_module gprs_uart_module;
-extern void ts2date(uint32_t time, struct calendar_date *date_out);
+extern void ts2date(uint32_t time, struct rtc_calendar_time *date_out);
 static void gprs_init(void)
 {
 	struct usart_config usart_conf;
@@ -156,7 +156,7 @@ void test_gprs(void)
 }
 uint8_t upload_data(char *json, uint32_t *time)
 {
-	struct calendar_date date_out;
+	struct rtc_calendar_time date_out;
 	uint8_t result = 0;
 	char out[256] = {0};
 	int n = 0,i = 0;
@@ -172,7 +172,7 @@ uint8_t upload_data(char *json, uint32_t *time)
 			do_it((uint8_t *)out+i, time);
 			ts2date(*time, &date_out);
 			printf("<SEND SERVER>\r\n%s\r\n<RCV>\r\n %s\r\n<SERVER TIME> %4d-%02d-%02d %02d:%02d:%02d\r\n",
-					json, out+i, date_out.year, date_out.month, date_out.date, date_out.hour, date_out.minute, date_out.second);
+					json, out+i, date_out.year, date_out.month, date_out.day, date_out.hour, date_out.minute, date_out.second);
 			break;
 		}
 		n++;

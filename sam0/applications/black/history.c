@@ -34,10 +34,11 @@ void save_dev_ts(uint32_t ts)
 	int i;
 	if (g_index + 3 < 4096) {
 		dev_info[g_index] = (ts >> 24) & 0xff;
-		dev_info[g_index+1] = (ts >> 24) & 0xff;
-		dev_info[g_index+2] = (ts >> 24) & 0xff;
-		dev_info[g_index+3] = (ts >> 24) & 0xff;
+		dev_info[g_index+1] = (ts >> 16) & 0xff;
+		dev_info[g_index+2] = (ts >> 8) & 0xff;
+		dev_info[g_index+3] = (ts >> 0) & 0xff;
 	}
+	printf("save ts to %d %d\r\n", g_index,ts);
 	enum status_code ret = at25dfx_chip_wake(&at25dfx_chip);
 	if (ret != STATUS_OK) {printf("chip wake failed %d\r\n", ret); return;}
 	ret = at25dfx_chip_set_sector_protect(&at25dfx_chip, 0x00000, false);
@@ -66,7 +67,7 @@ uint32_t get_dev_ts(uint8_t *serial, uint8_t len)
 	bool found = false;
 	int offset = 2;
 	int dev_num = 0;
-	int i;
+	int i,j;
 	int devx_len = 0;
 	enum status_code ret = at25dfx_chip_wake(&at25dfx_chip);
 	if (ret != STATUS_OK) {printf("chip wake failed %d\r\n", ret); return ts;}
@@ -93,9 +94,9 @@ uint32_t get_dev_ts(uint8_t *serial, uint8_t len)
 						 (dev_info[offset+len+5] << 0);
 					printf("found device offset %d , len %d, ts %d\r\n", offset,dev_info[offset],(int)ts);
 					g_index = offset+len+2;
-					//for (j=0; j<dev_info[offset]; j++)
-					//	printf("%c", dev_info[offset+j+1]);
-					//printf("\r\n");
+					for (j=0; j<dev_info[offset]; j++)
+						printf("%c", dev_info[offset+j+1]);
+					printf("\r\n");
 					break;
 				}
 			}				
@@ -161,10 +162,10 @@ uint8_t history_init(void)
 		printf("found spi flash\r\n");
 		ret = 1;
 	}
-	at25dfx_chip_set_sector_protect(&at25dfx_chip, 0x00000, false);
-	at25dfx_chip_erase_block(&at25dfx_chip, 0x00000, 
-					AT25DFX_BLOCK_SIZE_4KB);
-	at25dfx_chip_set_global_sector_protect(&at25dfx_chip, true);
+	//at25dfx_chip_set_sector_protect(&at25dfx_chip, 0x00000, false);
+	//at25dfx_chip_erase_block(&at25dfx_chip, 0x00000, 
+	//				AT25DFX_BLOCK_SIZE_4KB);
+	//at25dfx_chip_set_global_sector_protect(&at25dfx_chip, true);
 	at25dfx_chip_sleep(&at25dfx_chip);
 	return ret;
 }

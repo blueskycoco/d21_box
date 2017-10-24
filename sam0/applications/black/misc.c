@@ -4,7 +4,7 @@
 #include "cJSON.h"
 #include "conf_bootloader.h"
 #include "misc.h"
-#include <calendar.h>
+#include <rtc_calendar.h>
 #include <time.h>
 
 #if CONSOLE_OUTPUT_ENABLED
@@ -109,7 +109,7 @@ bool do_it(uint8_t *in, uint32_t *time)
 	}
 	return result;
 }
-void ts2date(uint32_t time, struct calendar_date *date_out)
+void ts2date(uint32_t time, struct rtc_calendar_time *date_out)
 {
 	char res[32] = {0};
 	char tmp[5] = {0};
@@ -119,7 +119,7 @@ void ts2date(uint32_t time, struct calendar_date *date_out)
 	memcpy(tmp, res+5, 2);
 	date_out->month = atoi(tmp);
 	memcpy(tmp, res+8, 2);
-	date_out->date = atoi(tmp);
+	date_out->day = atoi(tmp);
 	memcpy(tmp, res+11, 2);
 	date_out->hour= atoi(tmp) + 8;
 	memcpy(tmp, res+14, 2);
@@ -129,7 +129,7 @@ void ts2date(uint32_t time, struct calendar_date *date_out)
 	memcpy(tmp, res, 4);
 	date_out->year= atoi(tmp);
 }
-uint32_t date2ts(struct rtc_calendar_time date)
+/*uint32_t date2ts(struct rtc_calendar_time date)
 {
 	struct calendar_date cur_date;
 	cur_date.date = date.day;
@@ -139,4 +139,4 @@ uint32_t date2ts(struct rtc_calendar_time date)
 	cur_date.second = date.second;
 	cur_date.year = date.year;
 	return calendar_date_to_timestamp(&cur_date);
-}
+}*/

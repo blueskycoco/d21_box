@@ -55,7 +55,6 @@ CSRCS = \
        common/services/sleepmgr/samd/sleepmgr.c           \
        common/services/usb/class/hid/host/generic/uhi_hid_generic.c       \
        common/services/usb/uhc/uhc.c                      \
-       common/services/calendar/calendar.c                      \
        common/utils/interrupt/interrupt_sam_nvic.c        \
        common2/services/delay/sam0/cycle_counter.c        \
        common2/components/memory/serial_flash/at25dfx/at25dfx.c \
@@ -65,7 +64,9 @@ CSRCS = \
        sam0/applications/black/gprs.c \
        sam0/applications/black/history.c \
        sam0/applications/black/cJSON.c \
-       sam0/applications/black/box_usb.c \
+       sam0/applications/black/apollo.c \
+       sam0/applications/black/submit.c \
+       sam0/applications/black/stream.c \
        sam0/boards/samd21_xplained_pro/board_init.c       \
        sam0/drivers/bod/bod_sam_d_r_h/bod.c               \
        sam0/drivers/dma/dma.c                             \
