@@ -4,7 +4,9 @@
 #include "cJSON.h"
 #include "conf_bootloader.h"
 #include "misc.h"
-#include <calendar.h>
+#include <rtc_calendar.h>
+#include <time.h>
+
 #if CONSOLE_OUTPUT_ENABLED
 #include "conf_uart_serial.h"
 #endif
@@ -14,7 +16,7 @@
 #define XT 		"bloodSugar"
 #define TS		"actionTime"
 #define GID		"gid"
-#define DID		"device_id"
+#define DID		"deviceId"
 #define JSON "{\"data\": {\"type\": %d,\"bloodSugar\": %d.%d,\"actionTime\": %d,\"gid\": %d},\"deviceId\": \"%s\"}"
 #if CONSOLE_OUTPUT_ENABLED
 /**
@@ -98,7 +100,7 @@ bool do_it(uint8_t *in, uint32_t *time)
 		if (ts) {
 			if (ts->type == cJSON_Number) {
 				*time = ts->valueint;
-				printf("systemTime: %d\r\n", (int)*time);
+				printf("systemTime: %d\r\n", *time);
 			}
 		}
 
@@ -107,7 +109,27 @@ bool do_it(uint8_t *in, uint32_t *time)
 	}
 	return result;
 }
-uint32_t date2ts(struct rtc_calendar_time date)
+void ts2date(uint32_t time, struct rtc_calendar_time *date_out)
+{
+	char res[32] = {0};
+	char tmp[5] = {0};
+	struct tm lt;
+	localtime_r(&time, &lt);
+	strftime(res, sizeof(res), "%Y-%m-%d %H:%M:%S", &lt);
+	memcpy(tmp, res+5, 2);
+	date_out->month = atoi(tmp);
+	memcpy(tmp, res+8, 2);
+	date_out->day = atoi(tmp);
+	memcpy(tmp, res+11, 2);
+	date_out->hour= atoi(tmp) + 8;
+	memcpy(tmp, res+14, 2);
+	date_out->minute= atoi(tmp);
+	memcpy(tmp, res+17, 2);
+	date_out->second= atoi(tmp);
+	memcpy(tmp, res, 4);
+	date_out->year= atoi(tmp);
+}
+/*uint32_t date2ts(struct rtc_calendar_time date)
 {
 	struct calendar_date cur_date;
 	cur_date.date = date.day;
@@ -117,4 +139,4 @@ uint32_t date2ts(struct rtc_calendar_time date)
 	cur_date.second = date.second;
 	cur_date.year = date.year;
 	return calendar_date_to_timestamp(&cur_date);
-}
+}*/

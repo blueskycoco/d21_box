@@ -2,8 +2,11 @@
 #include <string.h>
 #include "conf_uart_serial.h"
 #include "gprs.h"
+#include "misc.h"
+#include "rtc_calendar.h"
+#define MAX_TRY 3
 static struct usart_module gprs_uart_module;
-
+extern void ts2date(uint32_t time, struct rtc_calendar_time *date_out);
 static void gprs_init(void)
 {
 	struct usart_config usart_conf;
@@ -52,7 +55,9 @@ static uint8_t gprs_send_cmd(const uint8_t *cmd, int len,int need_connect,uint8_
 	uint16_t rlen=0;
 	uint32_t i = 0;
 	uint8_t result = 0;
-	usart_serial_write_packet(&gprs_uart_module, cmd, len);
+	//printf("gprs %s\r\n", cmd);
+	if (cmd!=NULL && len > 0)
+		usart_serial_write_packet(&gprs_uart_module, cmd, len);
 	while(1) {
 		enum status_code ret = usart_serial_read_packet(&gprs_uart_module, rcv, 256, &rlen);
 		if (rlen > 0 && (ret == STATUS_OK || ret == STATUS_ERR_TIMEOUT)) {
@@ -78,7 +83,7 @@ static uint8_t gprs_send_cmd(const uint8_t *cmd, int len,int need_connect,uint8_
 			}
 		}
 	}
-	printf("gprs %d rcv %s\r\n",rlen,rcv);
+	//printf("gprs %d rcv %s\r\n",rlen,rcv);
 	return result;
 }
 uint8_t gprs_config(void)
@@ -137,8 +142,8 @@ uint8_t http_post(uint8_t *data, int len, char *rcv)
 {
 	uint8_t result = 0;
 	uint8_t post_cmd[32] = {0};
-	uint8_t send[400] = {0};
-	uint8_t len_string[256] = {0};
+	uint8_t send[2048] = {0};
+	uint8_t len_string[1400] = {0};
 	uint8_t http_header[] = "POST /weitang/sgSugarRecord/xiaohei/upload_json HTTP/1.1\r\nHOST: stage.boyibang.com\r\nAccept: */*\r\nUser-Agent: QUECTEL_MODULE\r\nConnection: Keep-Alive\r\nContent-Type: application/json\r\n";
 	const uint8_t read_response[] = "AT+QHTTPREAD=30\n";
 	strcpy((char *)send,(const char *)http_header);
@@ -155,6 +160,7 @@ uint8_t http_post(uint8_t *data, int len, char *rcv)
 		if (strstr((const char *)rcv, "OK") != NULL) {
 			memset(rcv,0,256);
 			result = gprs_send_cmd(read_response, strlen((const char *)read_response),0,(uint8_t *)rcv,1);
+			gprs_send_cmd(NULL,0,1,(uint8_t *)rcv,10);
 		}
 		else
 			printf("there is no response from m26 2\r\n");
@@ -175,4 +181,29 @@ void test_gprs(void)
 	http_post((uint8_t *)data,strlen(data),out);
 	if (strlen(out) != 0)
 		printf("http post response %s\r\n",out);
+}
+uint8_t upload_data(char *json, uint32_t *time)
+{
+	struct rtc_calendar_time date_out;
+	uint8_t result = 0;
+	char out[256] = {0};
+	int n = 0,i = 0;
+	while (n < MAX_TRY) {
+		//printf("upload data\r\n%s\r\n",json);
+		memset(out,0,256);
+		result = http_post((uint8_t *)json,strlen(json)
+									,out);
+		if (result) {
+			i=0;
+			while(out[i] != '{')
+				i++;
+			do_it((uint8_t *)out+i, time);
+			ts2date(*time, &date_out);
+			printf("<SEND SERVER>\r\n%s\r\n<RCV>\r\n %s\r\n<SERVER TIME> %4d-%02d-%02d %02d:%02d:%02d\r\n",
+					json, out+i, date_out.year, date_out.month, date_out.day, date_out.hour, date_out.minute, date_out.second);
+			break;
+		}
+		n++;
+	}
+	return result;
 }

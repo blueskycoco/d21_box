@@ -46,227 +46,401 @@
 
 #include <asf.h>
 #include "box_usb.h"
+#include "calendar.h"
 
-/**
- * \name Internal routines to manage asynchronous interrupt pin change
- * This interrupt is connected to a switch and allows to wakeup CPU in low sleep
- * mode.
- * This wakeup the USB devices connected via a downstream resume.
- * @{
- */
-static void ui_enable_asynchronous_interrupt(void);
-static void ui_disable_asynchronous_interrupt(void);
+extern void ts2date(uint32_t time, struct calendar_date *date_out);
+uint8_t cur_libre_serial_no[32] = {0};
+uint32_t g_num = 0;
+uint8_t buf[4096] = {0};
+extern bool libre_found;
+extern void upload_json(uint8_t *xt_data, uint32_t xt_len);
+unsigned char response[64] = {0};
 
-/**
- * \brief Interrupt handler for interrupt pin change
- */
-static void UI_WAKEUP_HANDLER(void)
+unsigned char recv_final_flag = 0;
+
+unsigned char recv_0x0c_cnt = 0;
+unsigned char first_send_28 = 1;
+union apollo_report
 {
-	if (uhc_is_suspend()) {
-		ui_disable_asynchronous_interrupt();
+    unsigned int report_word[16];
+    unsigned char report_byte[63];
+    struct
+    {
+        unsigned char report;
+        unsigned char length;
+        unsigned char remote_order;
+        unsigned char local_order;
+        unsigned int crc_unique;
+        union
+        {
+            unsigned int payload_word[14];
+            unsigned char payload_byte[56];
+        };
+    };
+};
 
-		/* Wakeup host and device */
-		uhc_resume();
+struct apollo_usb_data
+{
+    union apollo_report report_out;
+    int length_out;
+    union apollo_report report_in;
+    int length_in;
+    unsigned char upstream_order;
+    unsigned char downstream_order;
+} glucose_usb_data;
+
+void submit_serial(unsigned char * serial)
+{
+	printf("Serial Number: %s\r\n", serial);
+	memset(cur_libre_serial_no,0,32);
+	strcpy(cur_libre_serial_no, serial);
+}
+
+void submit_recorder(unsigned char cate, unsigned char data, unsigned short num, unsigned int time)
+{
+	struct calendar_date date_out;
+	ts2date(time, &date_out);
+	printf("Num\t%5d\tTime\t%4d-%02d-%02d %02d:%02d:%02d\tData\t%3d\r\n", num, date_out.year,
+			date_out.month, date_out.date, date_out.hour, date_out.minute, date_out.second, data);
+	//printf("Num\t%5d\tTime\t%10d\tData\t%3d\r\n", num, time, data);
+	if (g_num == 4095) {
+		/* flush to spi flash*/
+		upload_json(buf, g_num);
+		g_num = 0;		
 	}
+	buf[g_num++] = (num>>8) & 0xff;
+	buf[g_num++] = num & 0xff;
+	buf[g_num++] = (time>>24) & 0xff;
+	buf[g_num++] = (time>>16) & 0xff;
+	buf[g_num++] = (time>>8) & 0xff;
+	buf[g_num++] = (time) & 0xff;
+	buf[g_num++] = (data) & 0xff;
 }
 
-/**
- * \brief Initializes and enables interrupt pin change
- */
-static void ui_enable_asynchronous_interrupt(void)
+void submit_date_time(unsigned char second, unsigned char minute, unsigned char hour, unsigned char day, unsigned char month, unsigned int year)
 {
-	/* Initialize EIC for button wakeup */
-	struct extint_chan_conf eint_chan_conf;
-	extint_chan_get_config_defaults(&eint_chan_conf);
-
-	eint_chan_conf.gpio_pin            = BUTTON_0_EIC_PIN;
-	eint_chan_conf.gpio_pin_mux        = BUTTON_0_EIC_MUX;
-	eint_chan_conf.detection_criteria  = EXTINT_DETECT_FALLING;
-	eint_chan_conf.filter_input_signal = true;
-	extint_chan_set_config(BUTTON_0_EIC_LINE, &eint_chan_conf);
-	extint_register_callback(UI_WAKEUP_HANDLER,
-			BUTTON_0_EIC_LINE,
-			EXTINT_CALLBACK_TYPE_DETECT);
-	extint_chan_clear_detected(BUTTON_0_EIC_LINE);
-	extint_chan_enable_callback(BUTTON_0_EIC_LINE,
-			EXTINT_CALLBACK_TYPE_DETECT);
+	printf("Date-Time is: %4d-%02d-%02d %2d:%02d:%02d\r\n", year, month, day, hour, minute, second);
 }
 
-/**
- * \brief Disables interrupt pin change
- */
-static void ui_disable_asynchronous_interrupt(void)
+struct stream_handler
 {
-	extint_chan_disable_callback(BUTTON_0_EIC_LINE,
-			EXTINT_CALLBACK_TYPE_DETECT);
-}
+	int state;
+	int length;
+	int data_index;
+	int len_index;
+	unsigned char type;
+	union
+	{
+		struct
+		{
+			unsigned char cate;
+			unsigned char data;
+			unsigned short num;
+			unsigned int time;
+			uint32_t record_len;
+		};
+		unsigned char bytes[8];
+	} record;
+} streamer;
 
-/*! @} */
-
-/**
- * \name Main user interface functions
- * @{
- */
-void ui_init(void)
+void apollo_byte_stream_push(unsigned char byte)
 {
-	/* Initialize LEDs */
-	LED_Off(LED_0_PIN);
-}
-
-void ui_usb_mode_change(bool b_host_mode)
-{
-	if (b_host_mode) {
-		LED_On(LED_0_PIN);
-	} else {
-		LED_Off(LED_0_PIN);
-	}
-}
-
-/*! @} */
-
-/**
- * \name Host mode user interface functions
- * @{
- */
-
-/*! Status of device enumeration */
-static uhc_enum_status_t ui_enum_status = UHC_ENUM_DISCONNECT;
-/*! Blink frequency depending on device speed */
-static uint16_t ui_device_speed_blink;
-/*! Manages device mouse button down */
-static uint8_t ui_nb_down = 0;
-/*! Manages device mouse move */
-static bool ui_move = false;
-
-void ui_usb_vbus_change(bool b_vbus_present)
-{
-	UNUSED(b_vbus_present);
-}
-
-void ui_usb_vbus_error(void)
-{
-	/* Not used for SAMD21 */
-}
-
-void ui_usb_connection_event(uhc_device_t *dev, bool b_present)
-{
-	UNUSED(dev);
-	if (!b_present) {
-		LED_On(LED_0_PIN);
-		ui_enum_status = UHC_ENUM_DISCONNECT;
-	}
-}
-
-void ui_usb_enum_event(uhc_device_t *dev, uhc_enum_status_t status)
-{
-	ui_enum_status = status;
-	if (ui_enum_status == UHC_ENUM_SUCCESS) {
-		switch (dev->speed) {
-		case UHD_SPEED_HIGH:
-			ui_device_speed_blink = 250;
-			break;
-
-		case UHD_SPEED_FULL:
-			ui_device_speed_blink = 500;
-			break;
-
-		case UHD_SPEED_LOW:
-		default:
-			ui_device_speed_blink = 1000;
+#define HANDLER_IDLE	(0)
+#define HANDLER_LEN	(1)
+#define HANDLER_TYPE	(2)
+#define HANDLER_DATA	(3)
+	switch(streamer.state)
+	{
+	case HANDLER_IDLE:
+		if(byte > 0x80)
+		{
+			streamer.state = HANDLER_LEN;
+			streamer.length = byte & 0x7f;
+			streamer.len_index = 1;
+		}
+		break;
+	case HANDLER_LEN:
+		if(byte > 0x80)
+		{
+			streamer.state = HANDLER_LEN;
+			streamer.length += (byte & 0x7f) << (7 * streamer.len_index);
 			break;
 		}
-	}
-}
-
-void ui_usb_wakeup_event(void)
-{
-	ui_disable_asynchronous_interrupt();
-}
-
-void ui_usb_sof_event(void)
-{
-	bool b_btn_state;
-	static bool btn_suspend_and_remotewakeup = false;
-	static uint16_t counter_sof = 0;
-
-	if (ui_enum_status == UHC_ENUM_SUCCESS) {
-		/* Display device enumerated and in active mode */
-		if (++counter_sof > ui_device_speed_blink) {
-			counter_sof = 0;
-			LED_Toggle(LED_0_PIN);
-		}
-
-		/* Scan button to enter in suspend mode and remote wakeup */
-		b_btn_state = !port_pin_get_input_level(BUTTON_0_PIN);
-		if (b_btn_state != btn_suspend_and_remotewakeup) {
-			/* Button have changed */
-			btn_suspend_and_remotewakeup = b_btn_state;
-			if (b_btn_state) {
-				/* Button has been pressed */
-				ui_enable_asynchronous_interrupt();
-				LED_Off(LED_0_PIN);
-				uhc_suspend(true);
-				return;
+		streamer.state = HANDLER_TYPE;
+	case HANDLER_TYPE:
+		streamer.type = byte;
+		streamer.state = HANDLER_DATA;
+		streamer.data_index = 0;
+		streamer.record.cate = 0xFF;
+		break;
+	case HANDLER_DATA:
+		if(streamer.type == 0x31)
+		{
+			switch(streamer.data_index)
+			{
+			case 1:  streamer.record.bytes[2] = byte; break;
+			case 2:  streamer.record.bytes[3] = byte; break;
+			case 3:  streamer.record.cate = byte == 0x0C ? 0 : byte == 0x02 ? 1 : 0xFF; break;
+			case 4:  if(byte != 0x80) streamer.record.cate = 0xFF; break;
+			case 5:  streamer.record.bytes[4] = byte; break;
+			case 6:  streamer.record.bytes[5] = byte; break;
+			case 7:  streamer.record.bytes[6] = byte; break;
+			case 8:  streamer.record.bytes[7] = byte; break;
+			case 9:  streamer.record.time += ((unsigned int)byte); break;
+			case 10: streamer.record.time += ((unsigned int)byte) << 8; break;
+			case 11: streamer.record.time += ((unsigned int)byte) << 16; break;
+			case 12: streamer.record.time += ((unsigned int)byte) << 24; break;
+			case 13: streamer.record.bytes[1] = byte;
+				 if(streamer.record.cate != 0xFF && streamer.record.data != 0)
+				 {
+				 	submit_recorder(streamer.record.cate, streamer.record.data, streamer.record.num, streamer.record.time);
+					streamer.record.record_len++;
+				 }
+			default: break;
 			}
 		}
-
-		/* Power on a LED when the mouse button down */
-		if (ui_nb_down) {
-			LED_On(LED_0_PIN);
+		streamer.data_index ++;
+		streamer.length --;
+		if(streamer.length == 0)
+		{
+			streamer.state = HANDLER_IDLE;
+			streamer.data_index = 0;
+			streamer.len_index = 0;			
 		}
-		/* Power on a LED when the mouse moves */
-		if (ui_move) {
-			ui_move = false;
-			LED_On(LED_0_PIN);
-		}
+		break;
+	default:
+		break;
 	}
 }
 
-static void ui_uhi_hid_mouse_btn(bool b_state)
+static unsigned int crc_unique(unsigned int * data, unsigned int word_count)
 {
-	if (b_state) {
-		ui_nb_down++;
-	} else {
-		ui_nb_down--;
+    const unsigned int poly[16] =
+    {
+        0x00000000, 0x04c11db7, 0x09823b6e, 0x0d4326d9, 0x130476dc, 0x17c56b6b, 0x1a864db2, 0x1e475005,
+        0x2608edb8, 0x22c9f00f, 0x2f8ad6d6, 0x2b4bcb61, 0x350c9b64, 0x31cd86d3, 0x3c8ea00a, 0x384fbdbd
+    };
+    unsigned int remainder= 0xffffffffL;
+
+    for(unsigned int i=0;i<word_count;i++)
+    {
+        remainder ^= data[i];
+        for(int j=0;j<8;j++)
+            remainder = (remainder << 4) ^ poly[remainder >> 28];
+    }
+
+    return remainder;
+}
+
+
+static bool apollo_sync(unsigned char class)
+{
+    glucose_usb_data.report_out.report = 0x0D;
+    glucose_usb_data.report_out.length = 4;
+    glucose_usb_data.report_out.remote_order = glucose_usb_data.upstream_order;
+    glucose_usb_data.report_out.local_order = glucose_usb_data.downstream_order;
+    glucose_usb_data.report_out.report_byte[4] = 0;
+    glucose_usb_data.report_out.report_byte[5] = class;
+    bool ret = usb_send_report(glucose_usb_data.report_out.report_byte);
+    for(int i=0;i<14;i++)
+        glucose_usb_data.report_out.report_word[i] = 0;
+
+    glucose_usb_data.length_out = 0;
+	return ret;
+}
+
+static bool apollo_send_raw_packet(unsigned char * data, int length)
+{
+    for(int i=0; i < length; i++)
+        glucose_usb_data.report_out.report_byte[i] = data[i];
+
+    bool ret = usb_send_report(glucose_usb_data.report_out.report_byte);
+
+    for(int i=0;i<14;i++)
+        glucose_usb_data.report_out.report_word[i] = 0;
+
+	return ret;
+}
+
+static bool apollo_read_raw_packet()
+{
+    return usb_read_report(glucose_usb_data.report_in.report_byte);
+}
+void apollo_append_report_out(unsigned char data)
+{
+        if(glucose_usb_data.length_out == 0)//double first byte fit up to 127 bytes length
+        {
+		glucose_usb_data.report_out.payload_byte[glucose_usb_data.length_out] = data;
+            glucose_usb_data.length_out ++;
+        }
+	glucose_usb_data.report_out.payload_byte[glucose_usb_data.length_out] = data;
+        glucose_usb_data.length_out ++;
+}
+
+static void apollo_flush_report_out()
+{
+    if(glucose_usb_data.length_out == 0)
+    {
+        return;
+    }
+    else if(glucose_usb_data.length_out == 2) // 1 byte only
+    {
+        glucose_usb_data.length_out = 1;
+        glucose_usb_data.report_out.payload_byte[1] = 0;
+    }
+    else
+    {
+        glucose_usb_data.report_out.payload_byte[0] = (glucose_usb_data.length_out - 2) | 0x80;
+    }
+    glucose_usb_data.report_out.report = 0x0A;
+    glucose_usb_data.report_out.length = glucose_usb_data.length_out + 6;
+    glucose_usb_data.report_out.remote_order = glucose_usb_data.upstream_order;
+    glucose_usb_data.report_out.local_order = glucose_usb_data.downstream_order;
+    glucose_usb_data.report_out.crc_unique = crc_unique(glucose_usb_data.report_out.payload_word, (glucose_usb_data.length_out + 3) >> 2);
+
+    usb_send_report(glucose_usb_data.report_out.report_byte);
+
+    for(int i=0;i<14;i++)
+        glucose_usb_data.report_out.report_word[i] = 0;
+    glucose_usb_data.downstream_order ++;
+    glucose_usb_data.length_out = 0;
+}
+static bool apollo_fetch_report_in()
+{
+    int pending = 1;
+	bool ret = true;
+    while(pending && ret && libre_found)
+    {
+        ret = usb_read_report(glucose_usb_data.report_in.report_byte);
+        switch(glucose_usb_data.report_in.report)
+        {
+        case 0x0B:
+            if(glucose_usb_data.report_in.local_order != glucose_usb_data.upstream_order)
+            {
+                apollo_sync(0);
+                break;
+            }
+            pending = 0;
+            glucose_usb_data.upstream_order ++;
+            if(glucose_usb_data.upstream_order & 0x3)
+                apollo_sync(0);
+            break;
+        case 0x0C:
+            apollo_sync(0);
+            break;
+        }
+    }
+	return ret;
+}
+
+bool apollo_init()
+{
+	bool ret = false;
+	int i;
+    for(i=0;i<14;i++)
+        glucose_usb_data.report_out.report_word[i] = 0;
+    glucose_usb_data.length_out = 0;
+    glucose_usb_data.upstream_order = 0;
+    glucose_usb_data.downstream_order = 0;
+
+    unsigned char cmd[2];
+    cmd[0] = 0x04; cmd[1] = 0x00;
+    ret = apollo_send_raw_packet(cmd, 2);
+	if (ret)
+    	ret = apollo_read_raw_packet();
+	if (ret)
+    	ret = apollo_sync(2);
+	delay_ms(200);
+    //serial number
+    cmd[0] = 0x05; cmd[1] = 0x00;
+	if (ret)
+    	ret = apollo_send_raw_packet(cmd, 2);
+	if (ret) {
+    	ret = apollo_read_raw_packet();
+		submit_serial(glucose_usb_data.report_in.report_byte + 2);
 	}
+    //software version
+    cmd[0] = 0x15; cmd[1] = 0x00;
+	if (ret)
+    ret = apollo_send_raw_packet(cmd, 2);
+	if (ret)
+    ret = apollo_read_raw_packet();
+
+    cmd[0] = 0x01; cmd[1] = 0x00;
+	if (ret)
+    	ret = apollo_send_raw_packet(cmd, 2);
+	if (ret)
+    	ret = apollo_read_raw_packet();
+	return ret;
+//	unsigned char dbrnum[] = {0x21, 0x08, 0x24, 0x64, 0x62, 0x72, 0x6E, 0x75, 0x6D, 0x3F};
+//	apollo_send_raw_packet(dbrnum, 10);
+//	apollo_read_raw_packet();
 }
 
-void ui_uhi_hid_mouse_btn_left(bool b_state)
+static void apollo_req_recorder(void)
 {
-	ui_uhi_hid_mouse_btn(b_state);
+	bool ret = true;
+	apollo_append_report_out(0x31);
+	apollo_append_report_out(0x00);
+	apollo_flush_report_out();
+	apollo_append_report_out(0x31);
+	apollo_append_report_out(0x06);
+	apollo_flush_report_out();
+	apollo_append_report_out(0x7D);
+	apollo_flush_report_out();
+	do
+	{
+		ret = apollo_fetch_report_in();
+		for(int i = 0; i < glucose_usb_data.report_in.length - 6; i++)
+			apollo_byte_stream_push(glucose_usb_data.report_in.payload_byte[i]);
+
+	}while(glucose_usb_data.report_in.length == 0x3e && ret && libre_found);
 }
 
-void ui_uhi_hid_mouse_btn_right(bool b_state)
+static void apollo_req_date_time(void)
 {
-	ui_uhi_hid_mouse_btn(b_state);
+	apollo_append_report_out(0x41);
+	apollo_flush_report_out();
+	apollo_append_report_out(0x7D);
+	apollo_flush_report_out();
+	apollo_fetch_report_in();
+	submit_date_time(
+			glucose_usb_data.report_in.payload_byte[2], 
+			glucose_usb_data.report_in.payload_byte[3], 
+			glucose_usb_data.report_in.payload_byte[4], 
+			glucose_usb_data.report_in.payload_byte[5], 
+			glucose_usb_data.report_in.payload_byte[6], 
+			glucose_usb_data.report_in.payload_byte[7] | glucose_usb_data.report_in.payload_byte[8] << 8
+			);
 }
 
-void ui_uhi_hid_mouse_btn_middle(bool b_state)
+static void apollo_set_date_time(unsigned char second, unsigned char minute, unsigned char hour, unsigned char day, unsigned char month, unsigned int year)
 {
-	ui_uhi_hid_mouse_btn(b_state);
+	apollo_append_report_out(0x42);
+	apollo_append_report_out(second);
+	apollo_append_report_out(minute);
+	apollo_append_report_out(hour);
+	apollo_append_report_out(day);
+	apollo_append_report_out(month);
+	apollo_append_report_out(year & 0xFF);
+	apollo_append_report_out(year >> 8);
+	apollo_append_report_out(0x01);
+	apollo_flush_report_out();
+	apollo_append_report_out(0x7D);
+	apollo_flush_report_out();
+	apollo_fetch_report_in();
 }
 
-void ui_uhi_hid_mouse_move(int8_t x, int8_t y, int8_t scroll)
+void ui_init()
 {
-	UNUSED(x);
-	UNUSED(y);
-	UNUSED(scroll);
-	ui_move = true;
+	if (!libre_found)
+		return;
+    apollo_req_recorder();
+	apollo_req_date_time();
+	if (g_num > 0) {
+		upload_json(buf, g_num);
+		g_num = 0;	
+	}
+	printf("record_len = %d\n", streamer.record.record_len);
+	memset(&streamer, 0, sizeof(streamer));
 }
-
-/*! @} */
-
-/**
- * \defgroup UI User Interface
- *
- * Human interface on SAM D21 Xplained Pro:
- * - Led 0 is on when it's host and there is no device connected
- * - Led 0 blinks when a HID mouse is enumerated and USB in idle mode
- *   - The blink is slow (1s) with low speed device
- *   - The blink is normal (0.5s) with full speed device
- *   - The blink is fast (0.25s) with high speed device
- * - Led 0 is on when a HID mouse button is pressed
- * - Button SW0 allows to enter the device in suspend mode with remote wakeup
- *   feature authorized
- * - Only SW0 button can be used to wakeup USB device in suspend mode
- */

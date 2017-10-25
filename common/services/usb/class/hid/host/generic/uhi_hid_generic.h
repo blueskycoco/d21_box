@@ -66,7 +66,8 @@ extern "C" {
 extern uhc_enum_status_t uhi_hid_generic_install(uhc_device_t* dev);
 extern void uhi_hid_generic_enable(uhc_device_t* dev);
 extern void uhi_hid_generic_uninstall(uhc_device_t* dev);
-extern bool get_cap_data(uint8_t **out, uint32_t *len);
+extern bool usb_read_report(uint8_t *data);
+extern bool usb_send_report(uint8_t *cmd);
 
 #ifdef __cplusplus
 }

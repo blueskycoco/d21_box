@@ -51,25 +51,11 @@
 #include "uhi_hid_generic.h"
 #include <string.h>
 bool libre_found = false;
+bool read_flag = false;
 #ifdef USB_HOST_HUB_SUPPORT
 # error USB HUB support is not implemented on UHI mouse
 #endif
 
-uint8_t send_cmd_device_id[64] = {
-    0x05,0x00,0x2f,0x50,0x72,0x6f,0x67,0x72,0x61,0x6d,0x44,0x61,
-    0x74,0x61,0x2f,0x41,0x62,0x62,0x6f,0x74,0x74,0x20,0x44,0x69,
-    0x61,0x62,0x65,0x74,0x65,0x73,0x20,0x43,0x61,0x72,0x65,0x2f,
-    0x6d,0x61,0x73,0x2e,0x66,0x72,0x65,0x65,0x73,0x74,0x79,0x6c,
-    0x65,0x6c,0x69,0x62,0x72,0x65,0x2e,0x6c,0x6f,0x67,0x00,0x00,
-    0x00,0x00,0x00,0x00};
-uint8_t send_cmd_tsi1[64] = {
-	0x0a,0x07,0x65,0x12,0x4f,0x46,0x7d,0x16,0x7d,0x00,0x00,0x00,
-	0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-	0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-	0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-	0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-	0x00,0x00,0x00,0x00};
-uint8_t cur_libre_serial_no[32] = {0};
 typedef struct {
 	uhc_device_t *dev;
 	usb_ep_t ep_in;
@@ -82,7 +68,7 @@ static uhi_hid_generic_dev_t uhi_hid_generic_dev = {
 	.report = NULL,
 	};
 
-static void uhi_hid_generic_start_trans_report(usb_add_t add);
+static bool uhi_hid_generic_start_trans_report(usb_add_t add);
 static void uhi_hid_generic_report_reception(
 		usb_add_t add,
 		usb_ep_t ep,
@@ -185,9 +171,15 @@ static bool set_idle(uhc_device_t* dev)
 	return true;
 
 }*/
-bool get_cap_data(uint8_t **out, uint32_t *len)
+bool usb_send_report(uint8_t *cmd)
 {	
 	usb_setup_req_t req;
+	int i = 0;
+	//printf("USB send:\r\n");
+	//for(i = 0; i < 64; i++) {
+    //    printf("%02X ", cmd[i]);
+   // }
+    //printf("\r\n");
 	req.bmRequestType = USB_REQ_RECIP_INTERFACE | USB_REQ_TYPE_CLASS | USB_REQ_DIR_OUT;
 	req.bRequest = 0x09;
 	req.wValue = 0x2000;
@@ -195,26 +187,35 @@ bool get_cap_data(uint8_t **out, uint32_t *len)
 	req.wLength = uhi_hid_generic_dev.report_size;
 	if (!uhd_setup_request(uhi_hid_generic_dev.dev->address,
 		&req,
-		send_cmd_device_id,
+		cmd,
 		uhi_hid_generic_dev.report_size,
 		NULL, NULL)) {
 		printf("get cap data failed\r\n");	
 		return false;
 	}
-	printf("get cap data done\r\n");	
-	uhi_hid_generic_start_trans_report(uhi_hid_generic_dev.dev->address);
+	delay_ms(1);
 	return true;
+}
+bool usb_read_report(uint8_t *data)
+{
+	int i;
+	read_flag = false;
+	bool result = uhi_hid_generic_start_trans_report(uhi_hid_generic_dev.dev->address);
+	//while(read_flag == false);
+	delay_ms(1);
+	if (result)
+	memcpy(data, uhi_hid_generic_dev.report,uhi_hid_generic_dev.report_size);
+
+	return result;
 }
 void uhi_hid_generic_enable(uhc_device_t* dev)
 {
 	if (uhi_hid_generic_dev.dev != dev) {
-		return;  // No interface to enable
+		return;
 	}
-
+	
 	set_idle(dev);	
 	libre_found = true;
-	//send_cmd(dev,send_cmd_device_id);
-	//uhi_hid_generic_start_trans_report(dev->address);
 }
 
 void uhi_hid_generic_uninstall(uhc_device_t* dev)
@@ -226,13 +227,14 @@ void uhi_hid_generic_uninstall(uhc_device_t* dev)
 	Assert(uhi_hid_generic_dev.report!=NULL);
 	free(uhi_hid_generic_dev.report);
 }
-static void uhi_hid_generic_start_trans_report(usb_add_t add)
+static bool uhi_hid_generic_start_trans_report(usb_add_t add)
 {
 	// Start transfer on interrupt endpoint IN
 	bool ret = uhd_ep_run(add, uhi_hid_generic_dev.ep_in, true, uhi_hid_generic_dev.report,
 			uhi_hid_generic_dev.report_size, 0, uhi_hid_generic_report_reception);
 	if (!ret)
 		printf("uhd ep run failed\r\n");
+	return ret;
 }
 
 static void uhi_hid_generic_report_reception(
@@ -243,23 +245,26 @@ static void uhi_hid_generic_report_reception(
 {
 	int i;
 	UNUSED(ep);
-	printf("uhi_hid_generic_report_reception ==> \r\nadd %x, ep %x, status %d, len %d\r\n",
-		add,ep,status,(int)nb_transfered);
+	//printf("uhi_hid_generic_report_reception ==> \r\nadd %x, ep %x, status %d, len %d\r\n",
+	//	add,ep,status,(int)nb_transfered);
 	if ((status == UHD_TRANS_NOTRESPONDING) || (status == UHD_TRANS_TIMEOUT)) {
 		uhi_hid_generic_start_trans_report(add);
 		return; // HID mouse transfer restart
 	}
 
+	read_flag = true;
 	if ((status != UHD_TRANS_NOERROR) || (nb_transfered < 4)) {
 		printf("nb transfered < 4 %d\r\n", status);
-		//uhi_hid_generic_start_trans_report(add);
-		return; // HID mouse transfer aborted
+		return;
 	}
-	for (i = 0; i < uhi_hid_generic_dev.report_size; i++)
-	{
-		printf("%02x\t", uhi_hid_generic_dev.report[i]);
-	}
-	printf("\r\n");
+	
+	//printf("USB read:\r\n");
+	//for (i = 0; i < uhi_hid_generic_dev.report_size; i++)
+	//{
+	//	printf("%02X ", uhi_hid_generic_dev.report[i]);
+	//}
+	//printf("\r\n");
+	/*
 	//add more code here to parse cap data, ts, database etc
 	if (uhi_hid_generic_dev.report[0] == 0x06)
 	{//cur libre serial no
@@ -273,4 +278,5 @@ static void uhi_hid_generic_report_reception(
 	}
 	printf("uhi_hid_generic_report_reception <==\r\n");
 	//uhi_hid_generic_start_trans_report(add);
+	*/
 }
