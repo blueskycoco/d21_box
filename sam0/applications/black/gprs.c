@@ -6,6 +6,7 @@
 #include "rtc_calendar.h"
 #define MAX_TRY 3
 static struct usart_module gprs_uart_module;
+static bool gprs_status = false;
 extern void ts2date(uint32_t time, struct rtc_calendar_time *date_out);
 static void gprs_init(void)
 {
@@ -40,11 +41,14 @@ void gprs_power(int on)
 {
 	if (on)
 	{
+		if (gprs_status)
+			return;
 		port_pin_set_output_level(PIN_PA10, true);
-		port_pin_set_output_level(PIN_PA11, true);
-		delay_s(5);
 		port_pin_set_output_level(PIN_PA11, false);
+		delay_s(2);
+		port_pin_set_output_level(PIN_PA11, true);
 	} else {
+		gprs_status = false;
 		port_pin_set_output_level(PIN_PA11, false);
 		port_pin_set_output_level(PIN_PA10, false);
 	}
@@ -99,6 +103,8 @@ uint8_t gprs_config(void)
 	const uint8_t qhttpurl[] 	= "AT+QHTTPURL=67,30\n";
 //	const uint8_t qhttpurl_ask[]= "AT+QHTTPURL?\n";
 	const uint8_t url[] 		= "http://stage.boyibang.com/weitang/sgSugarRecord/xiaohei/upload_json\n";
+	if (gprs_status)
+		return 0;
 	gprs_init();
 	
 	result = gprs_send_cmd(qistat, strlen((const char *)qistat),0,rcv,1);
@@ -134,7 +140,7 @@ uint8_t gprs_config(void)
 					result = 0;
 			}
 		}	
-	
+	gprs_status = true;	
 	return result;
 }
 

@@ -60,7 +60,6 @@ static void black_system_init(void)
 	
 	/* Start USB host stack */
 	uhc_start();
-	gprs_config();
 	if (history_init())
 		printf("load history done\r\n");
 }
@@ -167,6 +166,8 @@ void upload_json(uint8_t *xt_data, uint32_t xt_len)
 			//printf("num %d\r\n", upload_num);
 			if (upload_num >= MAX_JSON) {
 				/*json item > max_json*/
+				gprs_power(1);
+				gprs_config();
 				if (upload_data(json,&server_time))	{
 					if (max_ts > bak_ts)
 						bak_ts = max_ts;
@@ -183,6 +184,8 @@ void upload_json(uint8_t *xt_data, uint32_t xt_len)
 	//printf("\r\nupload last data\r\n");
 	if (upload_num > 0) {
 		/*upload num < MAX_JSON*/
+		gprs_power(1);
+		gprs_config();
 		if (upload_data(json,&server_time)) {
 			if (max_ts > bak_ts)
 				bak_ts = max_ts;
@@ -259,6 +262,7 @@ int main(void)
 		} else
 			printf("no sugar insert\r\n");
 		usb_power(0);
+		gprs_power(0);
 		sleepmgr_enter_sleep();
 	}
 }
