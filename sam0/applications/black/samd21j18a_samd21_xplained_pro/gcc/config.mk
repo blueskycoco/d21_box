@@ -63,7 +63,6 @@ CSRCS = \
        sam0/applications/black/misc.c \
        sam0/applications/black/gprs.c \
        sam0/applications/black/history.c \
-       sam0/applications/black/cJSON.c \
        sam0/applications/black/apollo.c \
        sam0/applications/black/submit.c \
        sam0/applications/black/stream.c \

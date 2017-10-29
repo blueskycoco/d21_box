@@ -8,7 +8,7 @@
 static struct usart_module gprs_uart_module;
 static bool gprs_status = false;
 extern void ts2date(uint32_t time, struct rtc_calendar_time *date_out);
-static void gprs_init(void)
+void gprs_init(void)
 {
 	struct usart_config usart_conf;
 	struct port_config pin_conf;
@@ -47,6 +47,7 @@ void gprs_power(int on)
 		port_pin_set_output_level(PIN_PA11, false);
 		delay_s(2);
 		port_pin_set_output_level(PIN_PA11, true);
+		delay_s(5);
 	} else {
 		gprs_status = false;
 		port_pin_set_output_level(PIN_PA11, false);
@@ -59,7 +60,7 @@ static uint8_t gprs_send_cmd(const uint8_t *cmd, int len,int need_connect,uint8_
 	uint16_t rlen=0;
 	uint32_t i = 0;
 	uint8_t result = 0;
-	//printf("gprs %s\r\n", cmd);
+	printf("gprs %s\r\n", cmd);
 	if (cmd!=NULL && len > 0)
 		usart_serial_write_packet(&gprs_uart_module, cmd, len);
 	while(1) {
@@ -87,13 +88,15 @@ static uint8_t gprs_send_cmd(const uint8_t *cmd, int len,int need_connect,uint8_
 			}
 		}
 	}
-	//printf("gprs %d rcv %s\r\n",rlen,rcv);
+	printf("gprs %d rcv %s\r\n",rlen,rcv);
 	return result;
 }
 uint8_t gprs_config(void)
 {
 	uint8_t result = 0;
 	uint8_t rcv[256] = {0};
+	const uint8_t qifcsq[] 	= "AT+CSQ\n";
+	const uint8_t qifcimi[] 	= "AT+CIMI\n";
 	const uint8_t qifgcnt[] 	= "AT+QIFGCNT=0\n";
 	const uint8_t qicsgp[] 		= "AT+QICSGP=1,\"CMNET\"\n";
 	const uint8_t qiregapp[] 	= "AT+QIREGAPP\n";
@@ -105,7 +108,6 @@ uint8_t gprs_config(void)
 	const uint8_t url[] 		= "http://stage.boyibang.com/weitang/sgSugarRecord/xiaohei/upload_json\n";
 	if (gprs_status)
 		return 0;
-	gprs_init();
 	
 	result = gprs_send_cmd(qistat, strlen((const char *)qistat),0,rcv,1);
 	if (result) {
@@ -118,6 +120,8 @@ uint8_t gprs_config(void)
 			memset(rcv,0,256);
 			if (result)
 				result = gprs_send_cmd(qiregapp, strlen((const char *)qiregapp),0,rcv,1);
+			gprs_send_cmd(qifcsq, strlen((const char *)qifcsq),0,rcv,1);
+			gprs_send_cmd(qifcimi, strlen((const char *)qifcimi),0,rcv,1);
 			memset(rcv,0,256);
 			if (result)
 				result = gprs_send_cmd(qiact, strlen((const char *)qiact),1,rcv,20);

@@ -17,7 +17,7 @@
 #define TS		"actionTime"
 #define GID		"gid"
 #define DID		"deviceId"
-#define JSON "{\"data\": {\"type\": %d,\"bloodSugar\": %d.%d,\"actionTime\": %d,\"gid\": %d},\"deviceId\": \"%s\"}"
+#define JSON "{\"data\": {\"type\": %d,\"bloodSugar\": %d,\"actionTime\": %d,\"gid\": %d},\"deviceId\": \"%s\"}"
 #if CONSOLE_OUTPUT_ENABLED
 /**
  * \brief Initializes the console output
@@ -42,8 +42,9 @@ void console_init(void)
 char *build_json(char *old, char type, uint32_t bloodSugar, int actionTime, int gid, 
 				char *device_id)
 {
-#if 0
-	sprintf(out, JSON,type,bloodSugar[0],bloodSugar[1],actionTime,gid,device_id);
+#if 1
+	sprintf(old, JSON,type,bloodSugar,actionTime,gid,device_id);
+	return old;
 #else
 	cJSON *root;
 	char *out = NULL;
@@ -82,6 +83,8 @@ char *build_json(char *old, char type, uint32_t bloodSugar, int actionTime, int 
 }
 bool do_it(uint8_t *in, uint32_t *time)
 {
+	return false;
+#if 0
 	cJSON *root = NULL, *data = NULL, *ts = NULL;
 	bool result = false;
 	if (in != NULL) {
@@ -108,6 +111,7 @@ bool do_it(uint8_t *in, uint32_t *time)
 			cJSON_Delete(root);			
 	}
 	return result;
+	#endif
 }
 void ts2date(uint32_t time, struct rtc_calendar_time *date_out)
 {

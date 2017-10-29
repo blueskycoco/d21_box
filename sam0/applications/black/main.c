@@ -11,12 +11,13 @@
 #include "history.h"
 #include "calendar.h"
 #include "apollo.h"
-#define MAX_JSON 20
+#define MAX_JSON 1//20
 extern bool libre_found;
 bool long_press = false;
 #if CONSOLE_OUTPUT_ENABLED
 #define APP_HEADER "samd21 black box\r\n"
 #endif
+char json[256] = {0};
 
 int32_t cur_ts = -1;
 int32_t bak_ts = -1;
@@ -58,6 +59,7 @@ static void black_system_init(void)
 	/* Enable the global interrupts */
 	cpu_irq_enable();
 	
+	gprs_init();
 	/* Start USB host stack */
 	uhc_start();
 	if (history_init())
@@ -79,12 +81,33 @@ void ui_usb_wakeup_event(void)
 	printf("usb wakeup event\r\n");
 }
 
+
+/**
+ * \brief Initializes and enables interrupt pin change
+ */
+#define LINE 9
+static void usb_power(int on)
+{
+	if (on) {
+		port_pin_set_output_level(PIN_PA27, true);
+	} else {
+		port_pin_set_output_level(PIN_PA27, false);
+	}
+
+}
+static void power_off()
+{
+	port_pin_set_output_level(PIN_PA07, false);
+}
 static void button_callback(void)
 {
 	printf("button pressed\r\n");
 	/*long press for power off*/
 	/*short press for cap*/
 	uint32_t i = 0;
+	power_off();
+	usb_power(0);
+	gprs_power(0);
 
 	while(1) {
 		if (!port_pin_get_input_level(PIN_PA09))
@@ -101,11 +124,6 @@ static void button_callback(void)
 	else
 		long_press = false;
 }
-
-/**
- * \brief Initializes and enables interrupt pin change
- */
-#define LINE 9
 static void enable_button_interrupt(void)
 {
 	/* Initialize EIC for button wakeup */
@@ -124,22 +142,10 @@ static void enable_button_interrupt(void)
 	extint_chan_enable_callback(LINE,
 			EXTINT_CALLBACK_TYPE_DETECT);
 }
-static void usb_power(int on)
-{
-	if (on) {
-		port_pin_set_output_level(PIN_PA27, true);
-	} else {
-		port_pin_set_output_level(PIN_PA27, false);
-	}
 
-}
-static void power_off()
-{
-	port_pin_set_output_level(PIN_PA07, false);
-}
 void upload_json(uint8_t *xt_data, uint32_t xt_len)
 {
-	char *json = NULL;
+	
 	int32_t ts;
 	unsigned int i,upload_num=0;
 	
@@ -158,24 +164,26 @@ void upload_json(uint8_t *xt_data, uint32_t xt_len)
 				max_ts = ts;
 			int16_t gid = xt_data[i] << 8 | xt_data[i+1];
 			uint32_t bloodSugar = xt_data[i+6]*142+22;
-			//printf("add ts %d,gid %d, blood %d to list\r\n", (int)ts,
-			//	(int)gid, (int)bloodSugar);
-			json = build_json(json, 0, bloodSugar, ts, gid, 
+			printf("add ts %d,gid %d, blood %d to list\r\n", (int)ts,
+				(int)gid, (int)bloodSugar);
+			build_json(json, 0, bloodSugar, ts, gid, 
 							device_serial_no);
 			upload_num++;
-			//printf("num %d\r\n", upload_num);
+			printf("num %d\r\n", upload_num);
 			if (upload_num >= MAX_JSON) {
 				/*json item > max_json*/
+				printf("begin power on gprs\r\n");
 				gprs_power(1);
 				gprs_config();
 				if (upload_data(json,&server_time))	{
 					if (max_ts > bak_ts)
 						bak_ts = max_ts;
 				}
-				//printf("\r\nbegin upload\r\n");
-				//printf("%s", json);
-				free(json);
-				json = NULL;
+				printf("\r\nbegin upload\r\n");
+				printf("%s", json);
+				//free(json);
+				//json = NULL;
+				memset(json,0,256);
 				upload_num=0;
 			}
 		}
@@ -191,8 +199,9 @@ void upload_json(uint8_t *xt_data, uint32_t xt_len)
 				bak_ts = max_ts;
 		}
 		//printf("%s\r\n",json);
-		free(json);
-		json = NULL;
+		//free(json);
+		//json = NULL;
+		memset(json,0,256);
 		upload_num=0;
 	}
 }

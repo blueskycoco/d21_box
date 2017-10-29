@@ -5,4 +5,5 @@ uint8_t http_post(uint8_t *data, int len, char *rcv);
 void test_gprs(void);
 void gprs_power(int on);
 uint8_t upload_data(char *json, uint32_t *time);
+void gprs_init(void);
 #endif
