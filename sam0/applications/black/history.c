@@ -162,10 +162,12 @@ uint8_t history_init(void)
 		printf("found spi flash\r\n");
 		ret = 1;
 	}
-	//at25dfx_chip_set_sector_protect(&at25dfx_chip, 0x00000, false);
-	//at25dfx_chip_erase_block(&at25dfx_chip, 0x00000, 
-	//				AT25DFX_BLOCK_SIZE_4KB);
-	//at25dfx_chip_set_global_sector_protect(&at25dfx_chip, true);
+	if (!port_pin_get_input_level(PIN_PA09)) {
+		at25dfx_chip_set_sector_protect(&at25dfx_chip, 0x00000, false);
+		at25dfx_chip_erase_block(&at25dfx_chip, 0x00000, 
+					AT25DFX_BLOCK_SIZE_4KB);
+		at25dfx_chip_set_global_sector_protect(&at25dfx_chip, true);
+	}
 	at25dfx_chip_sleep(&at25dfx_chip);
 	return ret;
 }

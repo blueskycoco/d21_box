@@ -282,7 +282,7 @@ enum status_code at25dfx_chip_check_presence(struct at25dfx_chip_module *chip)
 	_at25dfx_chip_issue_read_command_wait(chip, cmd);
 
 	_at25dfx_spi_unlock(chip->spi);
-
+	printf("flash id is %x, type %d\r\n", id, chip->type);
 	if (id == _at25dfx_get_device_id(chip->type)) {
 		return STATUS_OK;
 	} else {

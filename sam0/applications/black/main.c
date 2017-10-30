@@ -60,6 +60,7 @@ static void black_system_init(void)
 	cpu_irq_enable();
 	
 	gprs_init();
+	port_pin_set_output_level(PIN_PA07, true);
 	/* Start USB host stack */
 	uhc_start();
 	if (history_init())
@@ -105,9 +106,6 @@ static void button_callback(void)
 	/*long press for power off*/
 	/*short press for cap*/
 	uint32_t i = 0;
-	power_off();
-	usb_power(0);
-	gprs_power(0);
 
 	while(1) {
 		if (!port_pin_get_input_level(PIN_PA09))
@@ -115,14 +113,20 @@ static void button_callback(void)
 		else
 			break;
 		delay_ms(1);
-		if (i>3000)
+		if (i>1000)
 			break;
 	}
 
-	if (i > 3000)
+	if (i > 1000)
 		long_press = true;
 	else
 		long_press = false;
+	printf("button pressed %d\r\n",long_press);	
+	if (long_press) {	
+		usb_power(0);
+		gprs_power(0);
+		power_off();
+	}
 }
 static void enable_button_interrupt(void)
 {
@@ -241,8 +245,6 @@ int main(void)
 			(unsigned int)serial_no[3]);
 	init_rtc();				
 	while (true) {
-		if (long_press)
-			power_off();
 		usb_power(1);
 		if (libre_found) {
 			if (uhc_is_suspend())
