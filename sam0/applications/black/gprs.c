@@ -47,7 +47,7 @@ void gprs_power(int on)
 		port_pin_set_output_level(PIN_PA11, false);
 		delay_s(1);
 		port_pin_set_output_level(PIN_PA11, true);
-		delay_s(60);
+		delay_s(5);
 	} else {
 		gprs_status = false;
 		port_pin_set_output_level(PIN_PA11, false);
@@ -65,9 +65,12 @@ static uint8_t gprs_send_cmd(const uint8_t *cmd, int len,int need_connect,uint8_
 		usart_serial_write_packet(&gprs_uart_module, cmd, len);
 	while(1) {
 		enum status_code ret = usart_serial_read_packet(&gprs_uart_module, rcv, 256, &rlen);
+		//printf("%d %d %d\r\n",ret,rlen,i);
 		if (rlen > 0 && (ret == STATUS_OK || ret == STATUS_ERR_TIMEOUT)) {
+			//printf("%s\r\n", rcv);
 			if (need_connect) {
-				if (strstr((const char *)rcv, "CONNECT") != NULL || strstr((const char *)rcv, "OK")!= NULL) {
+				if (strstr((const char *)rcv, "CONNECT") != NULL || strstr((const char *)rcv, "OK")!= NULL
+					||strstr((const char *)rcv, "ERROR")!= NULL) {
 					result = 1;
 					break;					
 				}
@@ -87,6 +90,7 @@ static uint8_t gprs_send_cmd(const uint8_t *cmd, int len,int need_connect,uint8_
 				}
 			}
 		}
+		rlen=0;
 	}
 	printf("gprs %d rcv %s\r\n",rlen,rcv);
 	return result;
@@ -120,9 +124,15 @@ uint8_t gprs_config(void)
 			memset(rcv,0,256);
 			if (result)
 				result = gprs_send_cmd(qiregapp, strlen((const char *)qiregapp),0,rcv,1);
-			gprs_send_cmd(qifcsq, strlen((const char *)qifcsq),0,rcv,1);
-			gprs_send_cmd(qifcimi, strlen((const char *)qifcimi),0,rcv,1);
+			//gprs_send_cmd(qifcsq, strlen((const char *)qifcsq),0,rcv,1);
+			//gprs_send_cmd(qifcimi, strlen((const char *)qifcimi),0,rcv,1);
 			memset(rcv,0,256);
+			while(1) {
+				result = gprs_send_cmd(qistat, strlen((const char *)qistat),0,rcv,1);
+				if (strstr((const char *)rcv, "IP START") != NULL)
+					break;
+				delay_s(1);
+				}
 			if (result)
 				result = gprs_send_cmd(qiact, strlen((const char *)qiact),1,rcv,20);
 			}
