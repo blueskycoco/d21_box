@@ -45,9 +45,9 @@ void gprs_power(int on)
 			return;
 		port_pin_set_output_level(PIN_PA10, true);
 		port_pin_set_output_level(PIN_PA11, false);
-		delay_s(2);
+		delay_s(1);
 		port_pin_set_output_level(PIN_PA11, true);
-		delay_s(5);
+		delay_s(60);
 	} else {
 		gprs_status = false;
 		port_pin_set_output_level(PIN_PA11, false);

@@ -246,6 +246,7 @@ int main(void)
 	init_rtc();				
 	while (true) {
 		usb_power(1);
+		delay_s(3);
 		if (libre_found) {
 			if (uhc_is_suspend())
 				uhc_resume();
