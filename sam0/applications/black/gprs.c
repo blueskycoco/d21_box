@@ -7,10 +7,10 @@
 #define MAX_TRY 3
 static struct usart_module gprs_uart_module;
 static bool gprs_status = false;
+struct usart_config usart_conf;
 extern void ts2date(uint32_t time, struct rtc_calendar_time *date_out);
 void gprs_init(void)
 {
-	struct usart_config usart_conf;
 	struct port_config pin_conf;
 	port_get_config_defaults(&pin_conf);
 
@@ -102,7 +102,7 @@ static uint8_t gprs_cmd(const uint8_t *cmd,uint8_t *rcv)
 	uint32_t i = 0;
 	uint8_t result = 0;
 	enum status_code ret;
-	printf("gprs %s\r\n", cmd);
+	printf("1gprs %s\r\n", cmd);
 	memset(rcv,0,256);
 	if (cmd!=NULL)
 		usart_serial_write_packet(&gprs_uart_module, cmd, strlen(cmd));
@@ -112,9 +112,9 @@ static uint8_t gprs_cmd(const uint8_t *cmd,uint8_t *rcv)
 				result = 1;
 				break;			
 		} else {
-			delay_ms(100);		
+			delay_us(100);		
 			i++;
-			if (i >= 20 * 70) {
+			if (i >= 20 * 7) {
 				printf("at cmd: %s ,timeout\r\n", cmd);
 				break;
 			}			
@@ -124,6 +124,56 @@ static uint8_t gprs_cmd(const uint8_t *cmd,uint8_t *rcv)
 	}
 	printf("%d gprs %d rcv %s\r\n",ret, rlen,rcv);
 	return result;
+}
+int test_baud(void)
+{
+	int baud = 75;
+	uint8_t rcv[256] = {0};
+	const uint8_t cmd1[] 	= "AT\n";
+	while (1) {
+		usart_disable(&gprs_uart_module);
+		usart_conf.baudrate    = baud;
+		printf("trying baud %d\r\n", baud);
+		usart_serial_init(&gprs_uart_module, CONF_GPRS_USART_MODULE, &usart_conf);
+		usart_enable(&gprs_uart_module);
+		gprs_cmd(cmd1,rcv);
+		if (strstr((const char *)rcv, "OK") != NULL)
+			break;
+		memset(rcv,0,256);		
+		if (baud == 75)
+			baud = 150;
+		else if (baud == 150)
+			baud = 300;
+		else if (baud == 300)
+			baud = 600;
+		else if (baud == 600)
+			baud = 1200;
+		else if (baud == 1200)
+			baud = 2400;
+		else if (baud == 2400)
+			baud = 4800;
+		else if (baud == 4800)
+			baud = 9600;
+		else if (baud == 9600)
+			baud = 14400;
+		else if (baud == 14400)
+			baud = 19200;
+		else if (baud == 19200)
+			baud = 28800;
+		else if (baud == 28800)
+			baud = 38400;
+		else if (baud == 38400)
+			baud = 57600;
+		else if (baud == 57600)
+			baud = 115200;
+		else if (baud == 115200)
+		{
+			printf("fuck!\r\n");
+			break;
+		}
+	}
+	printf("baud is %d\r\n",baud);
+	return baud;
 }
 void gprs_test(void)
 {
@@ -147,11 +197,12 @@ void gprs_test(void)
 	const uint8_t url[] 		= "http://stage.boyibang.com/weitang/sgSugarRecord/xiaohei/upload_json\n";
 	gprs_power(1);
 	//delay_s(120);
-	/*gprs_cmd(cmd1,rcv);
+	test_baud();
+	gprs_cmd(cmd1,rcv);
 	gprs_cmd(cmd2,rcv);
 	gprs_cmd(cmd3,rcv);
 	gprs_cmd(cmd13,rcv);
-	*/while(1) {
+	while(1) {
 		gprs_cmd(cmd5,rcv);
 		if (strstr((const char *)rcv, "+CREG: 0,1") != NULL) 
 			break;
