@@ -6,4 +6,5 @@ void test_gprs(void);
 void gprs_power(int on);
 uint8_t upload_data(char *json, uint32_t *time);
 void gprs_init(void);
+void gprs_test(void);
 #endif

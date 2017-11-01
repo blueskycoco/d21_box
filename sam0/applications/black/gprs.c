@@ -61,6 +61,7 @@ static uint8_t gprs_send_cmd(const uint8_t *cmd, int len,int need_connect,uint8_
 	uint32_t i = 0;
 	uint8_t result = 0;
 	printf("gprs %s\r\n", cmd);
+	memset(rcv,0,256);
 	if (cmd!=NULL && len > 0)
 		usart_serial_write_packet(&gprs_uart_module, cmd, len);
 	while(1) {
@@ -81,7 +82,7 @@ static uint8_t gprs_send_cmd(const uint8_t *cmd, int len,int need_connect,uint8_
 			}
 		} else {
 			//printf("gprs %d uart timeout %d\r\n",timeout,i);
-			delay_us(100);
+			delay_ms(100);
 			if (timeout != 0) {
 				i++;
 				if (i >= timeout * 70) {
@@ -95,10 +96,81 @@ static uint8_t gprs_send_cmd(const uint8_t *cmd, int len,int need_connect,uint8_
 	printf("gprs %d rcv %s\r\n",rlen,rcv);
 	return result;
 }
+static uint8_t gprs_cmd(const uint8_t *cmd,uint8_t *rcv)
+{
+	uint16_t rlen=0;
+	uint32_t i = 0;
+	uint8_t result = 0;
+	printf("gprs %s\r\n", cmd);
+	memset(rcv,0,256);
+	if (cmd!=NULL)
+		usart_serial_write_packet(&gprs_uart_module, cmd, strlen(cmd));
+	while(1) {
+		enum status_code ret = usart_serial_read_packet(&gprs_uart_module, rcv, 256, &rlen);
+		if (rlen > 0 && (ret == STATUS_OK || ret == STATUS_ERR_TIMEOUT)) {			
+				result = 1;
+				break;			
+		} else {
+			delay_ms(100);		
+			i++;
+			if (i >= 20 * 70) {
+				printf("at cmd: %s ,timeout\r\n", cmd);
+				break;
+			}			
+		}
+		rlen=0;
+	}
+	printf("gprs %d rcv %s\r\n",rlen,rcv);
+	return result;
+}
+void gprs_test(void)
+{
+	uint8_t rcv[256] = {0};
+	const uint8_t cmd1[] 	= "AT+GSN\n";
+	const uint8_t cmd2[] 	= "AT+CPIN?\n";
+	const uint8_t cmd3[] 	= "AT+CIMI\n";
+	const uint8_t cmd13[] 	= "AT+QCCID\n";
+	const uint8_t cmd5[] 	= "AT+CREG?\n";
+	const uint8_t cmd4[] 	= "AT+CSQ\n";
+	const uint8_t cmd6[] 	= "AT+CGREG?\n";
+	const uint8_t cmd7[] 	= "AT+COPS?\n";	
+	const uint8_t cmd14[] 	= "AT+COPS=?\n";	
+	const uint8_t cmd8[]	= "AT+QIFGCNT=0\n";
+	const uint8_t cmd9[] 	= "AT+QICSGP=1,\"CMNET\"\n";
+	const uint8_t cmd10[]   = "AT+QIREGAPP\n";
+	const uint8_t cmd11[] 	= "AT+QISTAT\n";
+	const uint8_t cmd12[] 	= "AT+QIACT\n";
+	gprs_power(1);
+	//delay_s(120);
+	/*gprs_cmd(cmd1,rcv);
+	gprs_cmd(cmd2,rcv);
+	gprs_cmd(cmd3,rcv);
+	gprs_cmd(cmd13,rcv);
+	*/while(1) {
+		gprs_cmd(cmd5,rcv);
+		if (strstr((const char *)rcv, "+CREG: 0,1") != NULL) 
+			break;
+		delay_s(1);
+	}
+	gprs_cmd(cmd4,rcv);
+	gprs_cmd(cmd6,rcv);
+	gprs_cmd(cmd7,rcv);
+	gprs_cmd(cmd14,rcv);
+	gprs_cmd(cmd8,rcv);
+	gprs_cmd(cmd9,rcv);
+	gprs_cmd(cmd10,rcv);
+	gprs_cmd(cmd11,rcv);
+	gprs_cmd(cmd12,rcv);
+}
 uint8_t gprs_config(void)
 {
 	uint8_t result = 0;
 	uint8_t rcv[256] = {0};
+	const uint8_t cmd1[] 	= "AT+GSN\n";
+	const uint8_t cmd2[] 	= "AT+CPIN?\n";
+	const uint8_t cmd3[] 	= "AT+CIMI\n";
+	const uint8_t cmd13[] 	= "AT+QCCID\n";
+	const uint8_t cmd5[] 	= "AT+CREG?\n";
 	const uint8_t qifcsq[] 	= "AT+CSQ\n";
 	const uint8_t qifcimi[] 	= "AT+CIMI\n";
 	const uint8_t qifgcnt[] 	= "AT+QIFGCNT=0\n";
@@ -112,7 +184,18 @@ uint8_t gprs_config(void)
 	const uint8_t url[] 		= "http://stage.boyibang.com/weitang/sgSugarRecord/xiaohei/upload_json\n";
 	if (gprs_status)
 		return 0;
-	
+	/*delay_s(120);
+	gprs_cmd(cmd1,rcv);
+	gprs_cmd(cmd2,rcv);
+	gprs_cmd(cmd3,rcv);
+	gprs_cmd(cmd13,rcv);
+	*/while(1) {
+		gprs_send_cmd(cmd5, strlen((const char *)cmd5),0,rcv,1);
+		if (strstr((const char *)rcv, "+CREG: 0,1") != NULL) 
+			break;
+		delay_s(1);
+		
+	}
 	result = gprs_send_cmd(qistat, strlen((const char *)qistat),0,rcv,1);
 	if (result) {
 		if (strstr((const char *)rcv, "IP GPRSACT") == NULL) { 
@@ -124,7 +207,7 @@ uint8_t gprs_config(void)
 			memset(rcv,0,256);
 			if (result)
 				result = gprs_send_cmd(qiregapp, strlen((const char *)qiregapp),0,rcv,1);
-			//gprs_send_cmd(qifcsq, strlen((const char *)qifcsq),0,rcv,1);
+			gprs_send_cmd(qifcsq, strlen((const char *)qifcsq),0,rcv,1);
 			//gprs_send_cmd(qifcimi, strlen((const char *)qifcimi),0,rcv,1);
 			memset(rcv,0,256);
 			while(1) {
@@ -134,7 +217,7 @@ uint8_t gprs_config(void)
 				delay_s(1);
 				}
 			if (result)
-				result = gprs_send_cmd(qiact, strlen((const char *)qiact),1,rcv,20);
+				result = gprs_send_cmd(qiact, strlen((const char *)qiact),1,rcv,40);
 			}
 		else
 			printf("gprs network already ok\r\n");
@@ -171,12 +254,12 @@ uint8_t http_post(uint8_t *data, int len, char *rcv)
 	strcat((char *)send,(const char *)len_string);
 	sprintf((char *)post_cmd, "AT+QHTTPPOST=%d,50,10\n", strlen((const char *)send));
 	strcat((char *)send,"\n");
-	gprs_send_cmd(post_cmd, strlen((const char *)post_cmd),1,(uint8_t *)rcv,20);
+	gprs_send_cmd(post_cmd, strlen((const char *)post_cmd),1,(uint8_t *)rcv,40);
 	
 	if (strstr((const char *)rcv, "CONNECT") != NULL) {		
 		memset(rcv,0,256);
 		//printf("%s",send);
-		gprs_send_cmd(send,strlen((const char *)send),0,(uint8_t *)rcv,20);
+		gprs_send_cmd(send,strlen((const char *)send),0,(uint8_t *)rcv,40);
 		if (strstr((const char *)rcv, "OK") != NULL) {
 			memset(rcv,0,256);
 			result = gprs_send_cmd(read_response, strlen((const char *)read_response),0,(uint8_t *)rcv,1);

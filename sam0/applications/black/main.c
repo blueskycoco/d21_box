@@ -244,6 +244,8 @@ int main(void)
 			(unsigned int)serial_no[1], (unsigned int)serial_no[2], 
 			(unsigned int)serial_no[3]);
 	init_rtc();				
+	//gprs_test();
+	//return 1;
 	while (true) {
 		usb_power(1);
 		delay_s(3);
