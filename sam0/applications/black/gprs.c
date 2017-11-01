@@ -101,12 +101,13 @@ static uint8_t gprs_cmd(const uint8_t *cmd,uint8_t *rcv)
 	uint16_t rlen=0;
 	uint32_t i = 0;
 	uint8_t result = 0;
+	enum status_code ret;
 	printf("gprs %s\r\n", cmd);
 	memset(rcv,0,256);
 	if (cmd!=NULL)
 		usart_serial_write_packet(&gprs_uart_module, cmd, strlen(cmd));
 	while(1) {
-		enum status_code ret = usart_serial_read_packet(&gprs_uart_module, rcv, 256, &rlen);
+		ret = usart_serial_read_packet(&gprs_uart_module, rcv, 256, &rlen);
 		if (rlen > 0 && (ret == STATUS_OK || ret == STATUS_ERR_TIMEOUT)) {			
 				result = 1;
 				break;			
@@ -119,8 +120,9 @@ static uint8_t gprs_cmd(const uint8_t *cmd,uint8_t *rcv)
 			}			
 		}
 		rlen=0;
+		memset(rcv,0,256);
 	}
-	printf("gprs %d rcv %s\r\n",rlen,rcv);
+	printf("%d gprs %d rcv %s\r\n",ret, rlen,rcv);
 	return result;
 }
 void gprs_test(void)
@@ -139,7 +141,10 @@ void gprs_test(void)
 	const uint8_t cmd9[] 	= "AT+QICSGP=1,\"CMNET\"\n";
 	const uint8_t cmd10[]   = "AT+QIREGAPP\n";
 	const uint8_t cmd11[] 	= "AT+QISTAT\n";
-	const uint8_t cmd12[] 	= "AT+QIACT\n";
+	const uint8_t cmd12[] 	= "AT+QIACT\n";	
+	const uint8_t qhttpcfg[]	= "AT+QHTTPCFG=\"Requestheader\",1\n";	
+	const uint8_t qhttpurl[]	= "AT+QHTTPURL=67,30\n";
+	const uint8_t url[] 		= "http://stage.boyibang.com/weitang/sgSugarRecord/xiaohei/upload_json\n";
 	gprs_power(1);
 	//delay_s(120);
 	/*gprs_cmd(cmd1,rcv);
@@ -161,6 +166,13 @@ void gprs_test(void)
 	gprs_cmd(cmd10,rcv);
 	gprs_cmd(cmd11,rcv);
 	gprs_cmd(cmd12,rcv);
+	gprs_cmd(qhttpcfg,rcv);
+	gprs_send_cmd(qhttpurl, strlen((const char *)qhttpurl),1,rcv,1);
+	gprs_cmd(url,rcv);
+	char data[] = "{\"data\": [{\"type\": 0,\"bloodSugar\": 6.8,\"actionTime\": 1502038862000,\"gid\": 1},{\"type\": 1,\"bloodSugar\": 6.9,\"actionTime\": 1502038862000,\"gid\": 2}],\"deviceId\": \"foduf3fdlfodf0dfdthffk\"}";
+	http_post((uint8_t *)data,strlen(data),rcv);
+	if (strlen(rcv) != 0)
+		printf("http post response %s\r\n",rcv);
 }
 uint8_t gprs_config(void)
 {
