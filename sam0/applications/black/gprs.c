@@ -27,14 +27,15 @@ static uint8_t gprs_send_cmd(const uint8_t *cmd, int len,int need_connect,uint8_
 	uint16_t rlen=0;
 	uint32_t i = 0;
 	uint8_t result = 0;
-	//printf("gprs %s\r\n", cmd);
+	printf("gprs %s\r\n", cmd);
+	memset(rcv,0,256);
 	if (cmd!=NULL && len > 0)
 		usart_serial_write_packet(&gprs_uart_module, cmd, len);
 	while(1) {
 		enum status_code ret = usart_serial_read_packet(&gprs_uart_module, rcv, 256, &rlen);
 		if (rlen > 0 && (ret == STATUS_OK || ret == STATUS_ERR_TIMEOUT)) {
 			if (need_connect) {
-				if (strstr((const char *)rcv, "CONNECT") != NULL || strstr((const char *)rcv, "OK")!= NULL) {
+				if (strstr((const char *)rcv, "CONNECT") != NULL || strstr((const char *)rcv, "OK")!= NULL|| strstr((const char *)rcv, "ERROR")!= NULL) {
 					result = 1;
 					break;					
 				}
@@ -48,20 +49,23 @@ static uint8_t gprs_send_cmd(const uint8_t *cmd, int len,int need_connect,uint8_
 			delay_us(100);
 			if (timeout != 0) {
 				i++;
-				if (i >= timeout * 70) {
+				if (i >= timeout * 700) {
 					printf("at cmd: %s ,timeout\r\n", cmd);
 					break;
 				}
 			}
 		}
+		rlen = 0;
+		memset(rcv,0,256);
 	}
-	//printf("gprs %d rcv %s\r\n",rlen,rcv);
+	printf("gprs %d rcv %s\r\n",rlen,rcv);
 	return result;
 }
 uint8_t gprs_config(void)
 {
 	uint8_t result = 0;
 	uint8_t rcv[256] = {0};
+	const uint8_t cmd5[] = "AT+CREG?\n";
 	const uint8_t qifgcnt[] 	= "AT+QIFGCNT=0\n";
 	const uint8_t qicsgp[] 		= "AT+QICSGP=1,\"CMNET\"\n";
 	const uint8_t qiregapp[] 	= "AT+QIREGAPP\n";
@@ -72,7 +76,13 @@ uint8_t gprs_config(void)
 //	const uint8_t qhttpurl_ask[]= "AT+QHTTPURL?\n";
 	const uint8_t url[] 		= "http://stage.boyibang.com/weitang/sgSugarRecord/xiaohei/upload_json\n";
 	gprs_init();
-	
+	while(1) {
+		gprs_send_cmd(cmd5, strlen((const char *)cmd5),0,rcv,1);
+		if (strstr((const char *)rcv, "+CREG: 0,1") != NULL) 
+			break;
+		delay_s(1);
+		
+}
 	result = gprs_send_cmd(qistat, strlen((const char *)qistat),0,rcv,1);
 	if (result) {
 		if (strstr((const char *)rcv, "IP GPRSACT") == NULL) { 
@@ -86,7 +96,7 @@ uint8_t gprs_config(void)
 				result = gprs_send_cmd(qiregapp, strlen((const char *)qiregapp),0,rcv,1);
 			memset(rcv,0,256);
 			if (result)
-				result = gprs_send_cmd(qiact, strlen((const char *)qiact),1,rcv,20);
+				result = gprs_send_cmd(qiact, strlen((const char *)qiact),1,rcv,40);
 			}
 		else
 			printf("gprs network already ok\r\n");
