@@ -248,7 +248,7 @@ int main(void)
 	//return 1;
 	while (true) {
 		usb_power(1);
-		delay_s(3);
+		delay_s(5);
 		if (libre_found) {
 			if (uhc_is_suspend())
 				uhc_resume();
@@ -257,9 +257,7 @@ int main(void)
 				//if (strlen(cur_libre_serial_no) == 0)
 					//if (!apollo_init())
 					//	memset(cur_libre_serial_no, 0, 32);
-				printf("apollo init\r\n");
 				apollo_init();	
-				printf("apollo 1init\r\n");
 				if (strlen(cur_libre_serial_no) != 0) {
 					if (cur_ts == -1 || bak_ts == -1) {
 						cur_ts = get_dev_ts(cur_libre_serial_no,32);

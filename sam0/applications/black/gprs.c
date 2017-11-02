@@ -68,7 +68,7 @@ static uint8_t gprs_send_cmd(const uint8_t *cmd, int len,int need_connect,uint8_
 		enum status_code ret = usart_serial_read_packet(&gprs_uart_module, rcv, 256, &rlen);
 		//printf("%d %d %d\r\n",ret,rlen,i);
 		if (rlen > 0 && (ret == STATUS_OK || ret == STATUS_ERR_TIMEOUT)) {
-			//printf("%s\r\n", rcv);
+			printf("%s\r\n", rcv);
 			if (need_connect) {
 				if (strstr((const char *)rcv, "CONNECT") != NULL || strstr((const char *)rcv, "OK")!= NULL
 					||strstr((const char *)rcv, "ERROR")!= NULL) {
@@ -241,7 +241,7 @@ uint8_t gprs_config(void)
 	const uint8_t cmd2[] 	= "AT+CPIN?\n";
 	const uint8_t cmd3[] 	= "AT+CIMI\n";
 	const uint8_t cmd13[] 	= "AT+QCCID\n";
-	const uint8_t cmd5[] 	= "AT+CREG?\n";
+	const uint8_t cmd5[] 	= "AT+CGREG?\n";
 	const uint8_t qifcsq[] 	= "AT+CSQ\n";
 	const uint8_t qifcimi[] 	= "AT+CIMI\n";
 	const uint8_t qifgcnt[] 	= "AT+QIFGCNT=0\n";
@@ -262,7 +262,7 @@ uint8_t gprs_config(void)
 	gprs_cmd(cmd13,rcv);
 	*/while(1) {
 		gprs_send_cmd(cmd5, strlen((const char *)cmd5),0,rcv,1);
-		if (strstr((const char *)rcv, "+CREG: 0,1") != NULL) 
+		if (strstr((const char *)rcv, "+CGREG: 0,1") != NULL) 
 			break;
 		delay_s(1);
 		
@@ -281,12 +281,6 @@ uint8_t gprs_config(void)
 			gprs_send_cmd(qifcsq, strlen((const char *)qifcsq),0,rcv,1);
 			//gprs_send_cmd(qifcimi, strlen((const char *)qifcimi),0,rcv,1);
 			memset(rcv,0,256);
-			while(1) {
-				result = gprs_send_cmd(qistat, strlen((const char *)qistat),0,rcv,1);
-				if (strstr((const char *)rcv, "IP START") != NULL)
-					break;
-				delay_s(1);
-				}
 			if (result)
 				result = gprs_send_cmd(qiact, strlen((const char *)qiact),1,rcv,40);
 			}
