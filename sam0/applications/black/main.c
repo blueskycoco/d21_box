@@ -257,7 +257,9 @@ int main(void)
 				//if (strlen(cur_libre_serial_no) == 0)
 					//if (!apollo_init())
 					//	memset(cur_libre_serial_no, 0, 32);
+				printf("apollo init\r\n");
 				apollo_init();	
+				printf("apollo 1init\r\n");
 				if (strlen(cur_libre_serial_no) != 0) {
 					if (cur_ts == -1 || bak_ts == -1) {
 						cur_ts = get_dev_ts(cur_libre_serial_no,32);

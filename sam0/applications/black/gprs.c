@@ -60,7 +60,7 @@ static uint8_t gprs_send_cmd(const uint8_t *cmd, int len,int need_connect,uint8_
 	uint16_t rlen=0;
 	uint32_t i = 0;
 	uint8_t result = 0;
-	printf("gprs %s\r\n", cmd);
+	//printf("gprs %s\r\n", cmd);
 	memset(rcv,0,256);
 	if (cmd!=NULL && len > 0)
 		usart_serial_write_packet(&gprs_uart_module, cmd, len);
@@ -82,10 +82,10 @@ static uint8_t gprs_send_cmd(const uint8_t *cmd, int len,int need_connect,uint8_
 			}
 		} else {
 			//printf("gprs %d uart timeout %d\r\n",timeout,i);
-			delay_ms(100);
+			delay_us(100);
 			if (timeout != 0) {
 				i++;
-				if (i >= timeout * 70) {
+				if (i >= timeout * 7000) {
 					printf("at cmd: %s ,timeout\r\n", cmd);
 					break;
 				}
@@ -93,7 +93,7 @@ static uint8_t gprs_send_cmd(const uint8_t *cmd, int len,int need_connect,uint8_
 		}
 		rlen=0;
 	}
-	printf("gprs %d rcv %s\r\n",rlen,rcv);
+	//printf("gprs %d rcv %s\r\n",rlen,rcv);
 	return result;
 }
 static uint8_t gprs_cmd(const uint8_t *cmd,uint8_t *rcv)
@@ -102,7 +102,7 @@ static uint8_t gprs_cmd(const uint8_t *cmd,uint8_t *rcv)
 	uint32_t i = 0;
 	uint8_t result = 0;
 	enum status_code ret;
-	printf("1gprs %s\r\n", cmd);
+	//printf("1gprs %s\r\n", cmd);
 	memset(rcv,0,256);
 	if (cmd!=NULL)
 		usart_serial_write_packet(&gprs_uart_module, cmd, strlen(cmd));
@@ -114,7 +114,7 @@ static uint8_t gprs_cmd(const uint8_t *cmd,uint8_t *rcv)
 		} else {
 			delay_us(100);		
 			i++;
-			if (i >= 20 * 7) {
+			if (i >= 20 * 700) {
 				printf("at cmd: %s ,timeout\r\n", cmd);
 				break;
 			}			
@@ -122,7 +122,7 @@ static uint8_t gprs_cmd(const uint8_t *cmd,uint8_t *rcv)
 		rlen=0;
 		memset(rcv,0,256);
 	}
-	printf("%d gprs %d rcv %s\r\n",ret, rlen,rcv);
+	//printf("%d gprs %d rcv %s\r\n",ret, rlen,rcv);
 	return result;
 }
 int test_baud(void)
@@ -197,33 +197,41 @@ void gprs_test(void)
 	const uint8_t url[] 		= "http://stage.boyibang.com/weitang/sgSugarRecord/xiaohei/upload_json\n";
 	gprs_power(1);
 	//delay_s(120);
-	test_baud();
-	gprs_cmd(cmd1,rcv);
-	gprs_cmd(cmd2,rcv);
-	gprs_cmd(cmd3,rcv);
-	gprs_cmd(cmd13,rcv);
+	//test_baud();
+	//gprs_cmd(cmd1,rcv);
+	//gprs_cmd(cmd2,rcv);
+	//gprs_cmd(cmd3,rcv);
+	//gprs_cmd(cmd13,rcv);
 	while(1) {
-		gprs_cmd(cmd5,rcv);
-		if (strstr((const char *)rcv, "+CREG: 0,1") != NULL) 
+		gprs_cmd(cmd6,rcv);
+		if (strstr((const char *)rcv, "+CGREG: 0,1") != NULL) 
 			break;
 		delay_s(1);
 	}
-	gprs_cmd(cmd4,rcv);
-	gprs_cmd(cmd6,rcv);
-	gprs_cmd(cmd7,rcv);
-	gprs_cmd(cmd14,rcv);
+	//gprs_cmd(cmd4,rcv);
+	//gprs_cmd(cmd6,rcv);
+	//gprs_cmd(cmd7,rcv);
+	//gprs_cmd(cmd14,rcv);
 	gprs_cmd(cmd8,rcv);
 	gprs_cmd(cmd9,rcv);
 	gprs_cmd(cmd10,rcv);
 	gprs_cmd(cmd11,rcv);
-	gprs_cmd(cmd12,rcv);
+	gprs_send_cmd(cmd12, strlen((const char *)cmd12),1,rcv,40);
 	gprs_cmd(qhttpcfg,rcv);
 	gprs_send_cmd(qhttpurl, strlen((const char *)qhttpurl),1,rcv,1);
 	gprs_cmd(url,rcv);
 	char data[] = "{\"data\": [{\"type\": 0,\"bloodSugar\": 6.8,\"actionTime\": 1502038862000,\"gid\": 1},{\"type\": 1,\"bloodSugar\": 6.9,\"actionTime\": 1502038862000,\"gid\": 2}],\"deviceId\": \"foduf3fdlfodf0dfdthffk\"}";
+	memset(rcv,0,256);
 	http_post((uint8_t *)data,strlen(data),rcv);
 	if (strlen(rcv) != 0)
-		printf("http post response %s\r\n",rcv);
+	{
+		int i=0;
+		printf("rcv %s\r\n",rcv);
+		while(rcv[i] != '{')
+			i++;
+		printf("<SEND SERVER>\r\n%s\r\n<RCV>\r\n %s\r\n",
+					data, rcv+i);
+	}
 }
 uint8_t gprs_config(void)
 {
@@ -326,7 +334,7 @@ uint8_t http_post(uint8_t *data, int len, char *rcv)
 		if (strstr((const char *)rcv, "OK") != NULL) {
 			memset(rcv,0,256);
 			result = gprs_send_cmd(read_response, strlen((const char *)read_response),0,(uint8_t *)rcv,1);
-			gprs_send_cmd(NULL,0,1,(uint8_t *)rcv,10);
+			//gprs_send_cmd(NULL,0,1,(uint8_t *)rcv,10);
 		}
 		else
 			printf("there is no response from m26 2\r\n");
