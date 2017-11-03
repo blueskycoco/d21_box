@@ -17,7 +17,6 @@ bool long_press = false;
 #if CONSOLE_OUTPUT_ENABLED
 #define APP_HEADER "samd21 black box\r\n"
 #endif
-char json[256] = {0};
 
 int32_t cur_ts = -1;
 int32_t bak_ts = -1;
@@ -151,7 +150,8 @@ void upload_json(uint8_t *xt_data, uint32_t xt_len)
 {
 	
 	int32_t ts;
-	unsigned int i,upload_num=0;
+	unsigned int i,upload_num=0;	
+	char json[256] = {0};
 	
 	if (!xt_data || xt_len == 0)
 		return;
