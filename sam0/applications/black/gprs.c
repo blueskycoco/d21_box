@@ -67,7 +67,7 @@ static uint8_t gprs_send_cmd(const uint8_t *cmd, int len,int need_connect,uint8_
 	while(1) {
 		enum status_code ret = usart_serial_read_packet(&gprs_uart_module, rcv, 256, &rlen);
 		//printf("%d %d %d\r\n",ret,rlen,i);
-		if (rlen > 0 && (ret == STATUS_OK || ret == STATUS_ERR_TIMEOUT)) {
+		if (rlen > 2 && (ret == STATUS_OK || ret == STATUS_ERR_TIMEOUT)) {
 			printf("%s\r\n", rcv);
 			if (need_connect) {
 				if (strstr((const char *)rcv, "CONNECT") != NULL || strstr((const char *)rcv, "OK")!= NULL
@@ -82,10 +82,10 @@ static uint8_t gprs_send_cmd(const uint8_t *cmd, int len,int need_connect,uint8_
 			}
 		} else {
 			//printf("gprs %d uart timeout %d\r\n",timeout,i);
-			delay_us(100);
+			delay_us(1);
 			if (timeout != 0) {
 				i++;
-				if (i >= timeout * 7000) {
+				if (i >= timeout * 70) {
 					printf("at cmd: %s ,timeout\r\n", cmd);
 					break;
 				}
@@ -96,6 +96,8 @@ static uint8_t gprs_send_cmd(const uint8_t *cmd, int len,int need_connect,uint8_
 	//printf("gprs %d rcv %s\r\n",rlen,rcv);
 	return result;
 }
+#if 0
+
 static uint8_t gprs_cmd(const uint8_t *cmd,uint8_t *rcv)
 {
 	uint16_t rlen=0;
@@ -125,6 +127,7 @@ static uint8_t gprs_cmd(const uint8_t *cmd,uint8_t *rcv)
 	//printf("%d gprs %d rcv %s\r\n",ret, rlen,rcv);
 	return result;
 }
+
 int test_baud(void)
 {
 	int baud = 75;
@@ -233,16 +236,12 @@ void gprs_test(void)
 					data, rcv+i);
 	}
 }
+#endif
 uint8_t gprs_config(void)
 {
 	uint8_t result = 0;
 	uint8_t rcv[256] = {0};
-	const uint8_t cmd1[] 	= "AT+GSN\n";
-	const uint8_t cmd2[] 	= "AT+CPIN?\n";
-	const uint8_t cmd3[] 	= "AT+CIMI\n";
-	const uint8_t cmd13[] 	= "AT+QCCID\n";
 	const uint8_t cmd5[] 	= "AT+CGREG?\n";
-	const uint8_t qifcsq[] 	= "AT+CSQ\n";
 	const uint8_t qifcimi[] 	= "AT+CIMI\n";
 	const uint8_t qifgcnt[] 	= "AT+QIFGCNT=0\n";
 	const uint8_t qicsgp[] 		= "AT+QICSGP=1,\"CMNET\"\n";
@@ -251,16 +250,10 @@ uint8_t gprs_config(void)
 	const uint8_t qistat[] 		= "AT+QISTAT\n";
 	const uint8_t qhttpcfg[] 	= "AT+QHTTPCFG=\"Requestheader\",1\n";	
 	const uint8_t qhttpurl[] 	= "AT+QHTTPURL=67,30\n";
-//	const uint8_t qhttpurl_ask[]= "AT+QHTTPURL?\n";
 	const uint8_t url[] 		= "http://stage.boyibang.com/weitang/sgSugarRecord/xiaohei/upload_json\n";
 	if (gprs_status)
 		return 0;
-	/*delay_s(120);
-	gprs_cmd(cmd1,rcv);
-	gprs_cmd(cmd2,rcv);
-	gprs_cmd(cmd3,rcv);
-	gprs_cmd(cmd13,rcv);
-	*/while(1) {
+	while(1) {
 		gprs_send_cmd(cmd5, strlen((const char *)cmd5),0,rcv,1);
 		if (strstr((const char *)rcv, "+CGREG: 0,1") != NULL) 
 			break;
@@ -278,7 +271,7 @@ uint8_t gprs_config(void)
 			memset(rcv,0,256);
 			if (result)
 				result = gprs_send_cmd(qiregapp, strlen((const char *)qiregapp),0,rcv,1);
-			gprs_send_cmd(qifcsq, strlen((const char *)qifcsq),0,rcv,1);
+			//gprs_send_cmd(qifcsq, strlen((const char *)qifcsq),0,rcv,1);
 			//gprs_send_cmd(qifcimi, strlen((const char *)qifcimi),0,rcv,1);
 			memset(rcv,0,256);
 			if (result)
@@ -310,8 +303,10 @@ uint8_t http_post(uint8_t *data, int len, char *rcv)
 {
 	uint8_t result = 0;
 	uint8_t post_cmd[32] = {0};
-	uint8_t send[2048] = {0};
-	uint8_t len_string[1400] = {0};
+	//uint8_t send[2048] = {0};
+	//uint8_t len_string[1400] = {0};	
+	uint8_t send[300] = {0};
+	uint8_t len_string[128] = {0};
 	uint8_t http_header[] = "POST /weitang/sgSugarRecord/xiaohei/upload_json HTTP/1.1\r\nHOST: stage.boyibang.com\r\nAccept: */*\r\nUser-Agent: QUECTEL_MODULE\r\nConnection: Keep-Alive\r\nContent-Type: application/json\r\n";
 	const uint8_t read_response[] = "AT+QHTTPREAD=30\n";
 	strcpy((char *)send,(const char *)http_header);
@@ -324,7 +319,7 @@ uint8_t http_post(uint8_t *data, int len, char *rcv)
 	if (strstr((const char *)rcv, "CONNECT") != NULL) {		
 		memset(rcv,0,256);
 		//printf("%s",send);
-		gprs_send_cmd(send,strlen((const char *)send),0,(uint8_t *)rcv,40);
+		gprs_send_cmd(send,strlen((const char *)send),0,(uint8_t *)rcv,80);
 		if (strstr((const char *)rcv, "OK") != NULL) {
 			memset(rcv,0,256);
 			result = gprs_send_cmd(read_response, strlen((const char *)read_response),0,(uint8_t *)rcv,1);
@@ -337,18 +332,6 @@ uint8_t http_post(uint8_t *data, int len, char *rcv)
 		printf("there is no response from m26 1\r\n");
 	
 	return result;
-}
-void test_gprs(void)
-{
-	//{"0":"5","30":"Radar048","35":"","36":"9517"}
-	//"http://123.57.26.24:8080/saveData/airmessage/messMgr.do"
-	//char data[] = "{\"0\":\"5\",\"30\":\"Radar048\",\"35\":\"\",\"36\":\"9517\"}";
-//	char data[] = "{\r\n\"data\": [\r\n{\r\n\"type\": 0,\r\n\"bloodSugar\": 6.8,\r\n\"actionTime\": 1502038862000,\r\n\"gid\": 1\r\n},\r\n{\r\n\"type\": 1,\r\n\"bloodSugar\": 6.9,\r\n\"actionTime\": 1502038862000,\r\n\"gid\": 2\r\n}\r\n],\r\n\"deviceId\": \"foduf3fdlfodf0dfdthffk\"\r\n}\n";
-	char out[256] = {0};
-	char data[] = "{\"data\": [{\"type\": 0,\"bloodSugar\": 6.8,\"actionTime\": 1502038862000,\"gid\": 1},{\"type\": 1,\"bloodSugar\": 6.9,\"actionTime\": 1502038862000,\"gid\": 2}],\"deviceId\": \"foduf3fdlfodf0dfdthffk\"}";
-	http_post((uint8_t *)data,strlen(data),out);
-	if (strlen(out) != 0)
-		printf("http post response %s\r\n",out);
 }
 uint8_t upload_data(char *json, uint32_t *time)
 {
@@ -365,10 +348,13 @@ uint8_t upload_data(char *json, uint32_t *time)
 			i=0;
 			while(out[i] != '{')
 				i++;
-			do_it((uint8_t *)out+i, time);
-			ts2date(*time, &date_out);
-			printf("<SEND SERVER>\r\n%s\r\n<RCV>\r\n %s\r\n<SERVER TIME> %4d-%02d-%02d %02d:%02d:%02d\r\n",
-					json, out+i, date_out.year, date_out.month, date_out.day, date_out.hour, date_out.minute, date_out.second);
+			//do_it((uint8_t *)out+i, time);
+			//ts2date(*time, &date_out);
+			//printf("<SEND SERVER>\r\n%s\r\n<RCV>\r\n %s\r\n<SERVER TIME> %4d-%02d-%02d %02d:%02d:%02d\r\n",
+			//		json, out+i, date_out.year, date_out.month, date_out.day, date_out.hour, date_out.minute, date_out.second);
+			
+			printf("<SEND SERVER>\r\n%s\r\n<RCV>\r\n %s\r\n",
+					json, out+i);
 			break;
 		}
 		n++;
