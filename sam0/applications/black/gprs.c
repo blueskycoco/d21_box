@@ -237,6 +237,19 @@ void gprs_test(void)
 	}
 }
 #endif
+uint8_t check_gprs(void)
+{
+	const uint8_t qistat[] 		= "AT+QISTAT\n";
+	uint8_t rcv[256] = {0};
+	if (gprs_send_cmd(qistat, strlen((const char *)qistat),0,rcv,1))
+	{
+		if (strstr((const char *)rcv, "IP GPRSACT") == NULL) 
+			return 1;
+		else
+			printf("lost signal %s",
+	}
+	return 0;
+}
 uint8_t gprs_config(void)
 {
 	uint8_t result = 0;
@@ -312,7 +325,7 @@ uint8_t http_post(uint8_t *data, int len, char *rcv)
 	const uint8_t read_response[] = "AT+QHTTPREAD=30\n";
 	//printf("post\r\n");
 	if (send == NULL) {
-		send = (uint8_t *)malloc(300);
+		send = (uint8_t *)malloc(512);
 		if (send == NULL) {
 			printf("can't malloc send\r\n");
 			return 0;

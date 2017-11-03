@@ -260,7 +260,7 @@ int main(void)
 				apollo_init();	
 				if (strlen(cur_libre_serial_no) != 0) {
 					if (cur_ts == -1 || bak_ts == -1) {
-						cur_ts = get_dev_ts(cur_libre_serial_no,32);
+						cur_ts = get_dev_ts(cur_libre_serial_no,strlen(cur_libre_serial_no));
 						bak_ts = cur_ts;
 						printf("%s inserted , ts %d\r\n",
 								cur_libre_serial_no,(int)cur_ts);
