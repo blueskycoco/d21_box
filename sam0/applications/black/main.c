@@ -168,23 +168,23 @@ void upload_json(uint8_t *xt_data, uint32_t xt_len)
 				max_ts = ts;
 			int16_t gid = xt_data[i] << 8 | xt_data[i+1];
 			uint32_t bloodSugar = xt_data[i+6]*142+22;
-			printf("add ts %d,gid %d, blood %d to list\r\n", (int)ts,
-				(int)gid, (int)bloodSugar);
+			//printf("add ts %d,gid %d, blood %d to list\r\n", (int)ts,
+			//	(int)gid, (int)bloodSugar);
 			build_json(json, 0, bloodSugar, ts, gid, 
 							device_serial_no);
 			upload_num++;
-			printf("num %d\r\n", upload_num);
+			//printf("num %d\r\n", upload_num);
 			if (upload_num >= MAX_JSON) {
 				/*json item > max_json*/
-				printf("begin power on gprs\r\n");
+				//printf("\r\nbegin upload\r\n");
+				//printf("%s", json);
+				//printf("begin power on gprs\r\n");
 				gprs_power(1);
 				gprs_config();
 				if (upload_data(json,&server_time))	{
 					if (max_ts > bak_ts)
 						bak_ts = max_ts;
 				}
-				printf("\r\nbegin upload\r\n");
-				printf("%s", json);
 				//free(json);
 				//json = NULL;
 				memset(json,0,256);

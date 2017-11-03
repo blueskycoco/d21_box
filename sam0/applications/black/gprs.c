@@ -67,8 +67,8 @@ static uint8_t gprs_send_cmd(const uint8_t *cmd, int len,int need_connect,uint8_
 	while(1) {
 		enum status_code ret = usart_serial_read_packet(&gprs_uart_module, rcv, 256, &rlen);
 		//printf("%d %d %d\r\n",ret,rlen,i);
-		if (rlen > 2 && (ret == STATUS_OK || ret == STATUS_ERR_TIMEOUT)) {
-			printf("%s\r\n", rcv);
+		if (rlen >= 2 && (ret == STATUS_OK || ret == STATUS_ERR_TIMEOUT)) {
+			//printf("%s\r\n", rcv);
 			if (need_connect) {
 				if (strstr((const char *)rcv, "CONNECT") != NULL || strstr((const char *)rcv, "OK")!= NULL
 					||strstr((const char *)rcv, "ERROR")!= NULL) {
@@ -275,7 +275,7 @@ uint8_t gprs_config(void)
 			//gprs_send_cmd(qifcimi, strlen((const char *)qifcimi),0,rcv,1);
 			memset(rcv,0,256);
 			if (result)
-				result = gprs_send_cmd(qiact, strlen((const char *)qiact),1,rcv,40);
+				result = gprs_send_cmd(qiact, strlen((const char *)qiact),1,rcv,80);
 			}
 		else
 			printf("gprs network already ok\r\n");
@@ -299,16 +299,33 @@ uint8_t gprs_config(void)
 	return result;
 }
 
+uint8_t *send=NULL;
+uint8_t *len_string=NULL;
+
 uint8_t http_post(uint8_t *data, int len, char *rcv)
 {
 	uint8_t result = 0;
-	uint8_t post_cmd[32] = {0};
+	uint8_t post_cmd[256] = {0};
 	//uint8_t send[2048] = {0};
 	//uint8_t len_string[1400] = {0};	
-	uint8_t send[300] = {0};
-	uint8_t len_string[128] = {0};
 	uint8_t http_header[] = "POST /weitang/sgSugarRecord/xiaohei/upload_json HTTP/1.1\r\nHOST: stage.boyibang.com\r\nAccept: */*\r\nUser-Agent: QUECTEL_MODULE\r\nConnection: Keep-Alive\r\nContent-Type: application/json\r\n";
 	const uint8_t read_response[] = "AT+QHTTPREAD=30\n";
+	//printf("post\r\n");
+	if (send == NULL) {
+		send = (uint8_t *)malloc(300);
+		if (send == NULL) {
+			printf("can't malloc send\r\n");
+			return 0;
+		}
+		len_string = (uint8_t *)malloc(128);
+		if (len_string == NULL) {
+			free(send);
+			printf("can't malloc len_string\r\n");
+			return 0;
+			}
+	}
+	memset(send,0,300);
+	memset(len_string,0,128);
 	strcpy((char *)send,(const char *)http_header);
 	sprintf((char *)len_string,"Content-Length: %d\r\n\r\n%s",len,data);
 	strcat((char *)send,(const char *)len_string);
@@ -323,14 +340,15 @@ uint8_t http_post(uint8_t *data, int len, char *rcv)
 		if (strstr((const char *)rcv, "OK") != NULL) {
 			memset(rcv,0,256);
 			result = gprs_send_cmd(read_response, strlen((const char *)read_response),0,(uint8_t *)rcv,1);
-			//gprs_send_cmd(NULL,0,1,(uint8_t *)rcv,10);
+			gprs_send_cmd(NULL,0,1,(uint8_t *)post_cmd,10);
 		}
 		else
 			printf("there is no response from m26 2\r\n");
 	}
 	else
 		printf("there is no response from m26 1\r\n");
-	
+	//free(send);
+	//free(len_string);
 	return result;
 }
 uint8_t upload_data(char *json, uint32_t *time)
