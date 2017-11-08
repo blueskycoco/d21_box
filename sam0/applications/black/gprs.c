@@ -236,7 +236,6 @@ void gprs_test(void)
 					data, rcv+i);
 	}
 }
-#endif
 uint8_t check_gprs(void)
 {
 	const uint8_t qistat[] 		= "AT+QISTAT\n";
@@ -250,6 +249,7 @@ uint8_t check_gprs(void)
 	}
 	return 0;
 }
+#endif
 uint8_t gprs_config(void)
 {
 	uint8_t result = 0;
@@ -313,35 +313,37 @@ uint8_t gprs_config(void)
 }
 
 uint8_t *send=NULL;
-uint8_t *len_string=NULL;
+//uint8_t *len_string=NULL;
+//#define HTTP_HEADER "POST /weitang/sgSugarRecord/xiaohei/upload_json HTTP/1.1\r\nHOST: stage.boyibang.com\r\nAccept: */*\r\nUser-Agent: QUECTEL_MODULE\r\nConnection: Keep-Alive\r\nContent-Type: application/json\r\nContent-Length: %d\r\n\r\n%s"
 
 uint8_t http_post(uint8_t *data, int len, char *rcv)
 {
 	uint8_t result = 0;
-	uint8_t post_cmd[256] = {0};
+	uint8_t post_cmd[32] = {0};
 	//uint8_t send[2048] = {0};
 	//uint8_t len_string[1400] = {0};	
-	uint8_t http_header[] = "POST /weitang/sgSugarRecord/xiaohei/upload_json HTTP/1.1\r\nHOST: stage.boyibang.com\r\nAccept: */*\r\nUser-Agent: QUECTEL_MODULE\r\nConnection: Keep-Alive\r\nContent-Type: application/json\r\n";
+	//uint8_t http_header[] = "POST /weitang/sgSugarRecord/xiaohei/upload_json HTTP/1.1\r\nHOST: stage.boyibang.com\r\nAccept: */*\r\nUser-Agent: QUECTEL_MODULE\r\nConnection: Keep-Alive\r\nContent-Type: application/json\r\nContent-Length: %d\r\n\r\n%s";
 	const uint8_t read_response[] = "AT+QHTTPREAD=30\n";
 	//printf("post\r\n");
 	if (send == NULL) {
-		send = (uint8_t *)malloc(512);
+		send = (uint8_t *)malloc(len+200);
 		if (send == NULL) {
 			printf("can't malloc send\r\n");
 			return 0;
 		}
-		len_string = (uint8_t *)malloc(128);
-		if (len_string == NULL) {
-			free(send);
-			printf("can't malloc len_string\r\n");
-			return 0;
-			}
+		//len_string = (uint8_t *)malloc(len+32);
+		//if (len_string == NULL) {
+		//	free(send);
+		//	printf("can't malloc len_string\r\n");
+		//	return 0;
+		//	}
 	}
-	memset(send,0,300);
-	memset(len_string,0,128);
-	strcpy((char *)send,(const char *)http_header);
-	sprintf((char *)len_string,"Content-Length: %d\r\n\r\n%s",len,data);
-	strcat((char *)send,(const char *)len_string);
+	memset(send,0,len+200);
+	//memset(len_string,0,len+32);
+	//strcpy((char *)send,(const char *)http_header);
+	//sprintf((char *)len_string,"Content-Length: %d\r\n\r\n%s",len,data);
+	sprintf((char *)send,"POST /weitang/sgSugarRecord/xiaohei/upload_json HTTP/1.1\r\nHOST: stage.boyibang.com\r\nAccept: */*\r\nUser-Agent: QUECTEL_MODULE\r\nConnection: Keep-Alive\r\nContent-Type: application/json\r\nContent-Length: %d\r\n\r\n%s",len,data);
+	//strcat((char *)send,(const char *)len_string);
 	sprintf((char *)post_cmd, "AT+QHTTPPOST=%d,50,10\n", strlen((const char *)send));
 	strcat((char *)send,"\n");
 	gprs_send_cmd(post_cmd, strlen((const char *)post_cmd),1,(uint8_t *)rcv,40);

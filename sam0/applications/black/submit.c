@@ -7,7 +7,7 @@
 uint8_t cur_libre_serial_no[32] = {0};
 extern bool libre_found;
 uint32_t g_num = 0;
-uint8_t buf[1022/*4096*/] = {0};
+uint8_t buf[1024/*4096*/] = {0};
 extern void upload_json(uint8_t *xt_data, uint32_t xt_len);
 extern void ts2date(uint32_t time, struct rtc_calendar_time *date_out);
 void submit_serial(char * serial)
@@ -24,7 +24,7 @@ void submit_recorder(unsigned char cate, unsigned char data, unsigned short num,
 	printf("Num\t%5d\tTime\t%4d-%02d-%02d %02d:%02d:%02d\tCate\t%d\tData\t%3d\r\n", num, date_out.year,
 			date_out.month, date_out.day, date_out.hour, date_out.minute, date_out.second, cate, data);
 	//printf("Num\t%5d\tTime\t%10d\tData\t%3d\r\n", num, time, data);
-	if (g_num == /*4095*/1022) {
+	if (g_num == /*4095*/1024) {
 		/* flush to spi flash*/
 		upload_json(buf, g_num);
 		g_num = 0;		
@@ -36,6 +36,7 @@ void submit_recorder(unsigned char cate, unsigned char data, unsigned short num,
 	buf[g_num++] = (time>>8) & 0xff;
 	buf[g_num++] = (time) & 0xff;
 	buf[g_num++] = (data) & 0xff;
+	buf[g_num++] = (cate) & 0xff;
 }
 
 void submit_date_time(unsigned char second, unsigned char minute, unsigned char hour, unsigned char day, unsigned char month, unsigned int year)

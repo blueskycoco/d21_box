@@ -151,7 +151,8 @@ void upload_json(uint8_t *xt_data, uint32_t xt_len)
 	
 	int32_t ts;
 	unsigned int i,upload_num=0;	
-	char json[256] = {0};
+	char json[2086] = {0};
+	uint32_t total_len = 0;
 	
 	if (!xt_data || xt_len == 0)
 		return;
@@ -166,6 +167,7 @@ void upload_json(uint8_t *xt_data, uint32_t xt_len)
 			/*check ts > last ts*/
 			if (ts > max_ts)
 				max_ts = ts;
+			#if 0
 			int16_t gid = xt_data[i] << 8 | xt_data[i+1];
 			uint32_t bloodSugar = xt_data[i+6]*142+22;
 			//printf("add ts %d,gid %d, blood %d to list\r\n", (int)ts,
@@ -190,9 +192,34 @@ void upload_json(uint8_t *xt_data, uint32_t xt_len)
 				memset(json,0,256);
 				upload_num=0;
 			}
+			#endif
 		}
-		i=i+7;
+		i=i+8;
 	}
+	/*store data & toHex 
+	   id_len0|id_len1|serial_no|len0|len1|len2|len3|data0|...|datan
+	   */
+	
+	uint8_t device_id_len = strlen(cur_libre_serial_no);
+	toHex(&device_id_len, 1, json);
+	memcpy(json+2, cur_libre_serial_no, device_id_len);
+	toHex((uint8_t *)&xt_len, 2,json+2+device_id_len);
+	toHex(xt_data, xt_len, json+2+device_id_len+4);
+	printf("ORI\r\n%x",device_id_len);
+	printf("%s",cur_libre_serial_no);
+	printf("%x",xt_len);
+	for(i=0; i<xt_len; i++)
+		printf("%x", xt_data[i]);
+	printf("\r\nHEX\r\n");
+	for(i=0;i<strlen(json);i++)
+		printf("%c",json[i]);
+	gprs_power(1);
+	gprs_config();
+	if (upload_data(json,&server_time))	{
+		if (max_ts > bak_ts)
+			bak_ts = max_ts;
+	}
+	#if 0
 	//printf("\r\nupload last data\r\n");
 	if (upload_num > 0) {
 		/*upload num < MAX_JSON*/
@@ -208,6 +235,7 @@ void upload_json(uint8_t *xt_data, uint32_t xt_len)
 		memset(json,0,256);
 		upload_num=0;
 	}
+	#endif
 }
 static void update_time(uint32_t time)
 {

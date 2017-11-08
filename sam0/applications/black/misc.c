@@ -144,3 +144,11 @@ void ts2date(uint32_t time, struct rtc_calendar_time *date_out)
 	cur_date.year = date.year;
 	return calendar_date_to_timestamp(&cur_date);
 }*/
+void toHex(uint8_t *input, uint32_t len, uint8_t *output)
+{
+	int i = 0, j = 0;
+	for (i=0; i<len; i++) {
+		output[j++] = (input[i] >> 8) & 0x0f + 0x30;
+		output[j++] = input[i] & 0x0f + 0x30;
+		}
+}
