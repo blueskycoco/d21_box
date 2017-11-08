@@ -205,13 +205,13 @@ void upload_json(uint8_t *xt_data, uint32_t xt_len)
 	memcpy(json+2, cur_libre_serial_no, device_id_len);
 	toHex((uint8_t *)&xt_len, 2,json+2+device_id_len);
 	toHex(xt_data, xt_len, json+2+device_id_len+4);
-	printf("ORI\r\n%x",device_id_len);
+	printf("ORI\r\n%02x",device_id_len);
 	printf("%s",cur_libre_serial_no);
-	printf("%x",xt_len);
+	printf("%02x",xt_len);
 	for(i=0; i<xt_len; i++)
-		printf("%x", xt_data[i]);
+		printf("%02x", xt_data[i]);
 	printf("\r\nHEX\r\n");
-	for(i=0;i<strlen(json);i++)
+	for(i=0;i<2086;i++)
 		printf("%c",json[i]);
 	gprs_power(1);
 	gprs_config();

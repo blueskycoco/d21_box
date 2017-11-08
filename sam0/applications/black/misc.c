@@ -147,8 +147,11 @@ void ts2date(uint32_t time, struct rtc_calendar_time *date_out)
 void toHex(uint8_t *input, uint32_t len, uint8_t *output)
 {
 	int i = 0, j = 0;
+	printf("toHex\r\n");
 	for (i=0; i<len; i++) {
-		output[j++] = (input[i] >> 8) & 0x0f + 0x30;
-		output[j++] = input[i] & 0x0f + 0x30;
+		printf(">%02x\r\n",input[i]);
+		output[j++] = ((input[i] >> 4) & 0x0f) + 0x30;
+		output[j++] = (input[i] & 0x0f) + 0x30;
+		printf("<%02x%02x\r\n",output[j-2],output[j-1]);
 		}
 }
