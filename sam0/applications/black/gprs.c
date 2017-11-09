@@ -342,7 +342,7 @@ uint8_t http_post(uint8_t *data, int len, char *rcv)
 	//memset(len_string,0,len+32);
 	//strcpy((char *)send,(const char *)http_header);
 	//sprintf((char *)len_string,"Content-Length: %d\r\n\r\n%s",len,data);
-	sprintf((char *)send,"POST /weitang/sgSugarRecord/xiaohei/upload_json HTTP/1.1\r\nHOST: stage.boyibang.com\r\nAccept: */*\r\nUser-Agent: QUECTEL_MODULE\r\nConnection: Keep-Alive\r\nContent-Type: application/json\r\nContent-Length: %d\r\n\r\n%s",len,data);
+	sprintf((char *)send,"POST /weitang/sgSugarRecord/xiaohei/upload HTTP/1.1\r\nHOST: stage.boyibang.com\r\nAccept: */*\r\nUser-Agent: QUECTEL_MODULE\r\nConnection: Keep-Alive\r\nContent-Type: application/json\r\nContent-Length: %d\r\n\r\n%s",len,data);
 	//strcat((char *)send,(const char *)len_string);
 	sprintf((char *)post_cmd, "AT+QHTTPPOST=%d,50,10\n", strlen((const char *)send));
 	strcat((char *)send,"\n");
