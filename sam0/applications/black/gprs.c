@@ -350,12 +350,17 @@ uint8_t http_post(uint8_t *data, int len, char *rcv)
 	
 	if (strstr((const char *)rcv, "CONNECT") != NULL) {		
 		memset(rcv,0,256);
-		//printf("%s",send);
+		printf("%s",send);
+		printf("1\r\n");
 		gprs_send_cmd(send,strlen((const char *)send),0,(uint8_t *)rcv,80);
+		printf("2\r\n");
 		if (strstr((const char *)rcv, "OK") != NULL) {
+			printf("3\r\n");
 			memset(rcv,0,256);
 			result = gprs_send_cmd(read_response, strlen((const char *)read_response),0,(uint8_t *)rcv,1);
+			printf("4 %s\r\n",rcv);
 			gprs_send_cmd(NULL,0,1,(uint8_t *)post_cmd,10);
+			printf("5\r\n");
 		}
 		else
 			printf("there is no response from m26 2\r\n");
@@ -364,6 +369,7 @@ uint8_t http_post(uint8_t *data, int len, char *rcv)
 		printf("there is no response from m26 1\r\n");
 	//free(send);
 	//free(len_string);
+	printf("6\r\n");
 	return result;
 }
 uint8_t upload_data(char *json, uint32_t *time)
@@ -373,19 +379,20 @@ uint8_t upload_data(char *json, uint32_t *time)
 	char out[256] = {0};
 	int n = 0,i = 0;
 	while (n < MAX_TRY) {
-		//printf("upload data\r\n%s\r\n",json);
+		printf("upload data\r\n%s\r\n",json);
 		memset(out,0,256);
 		result = http_post((uint8_t *)json,strlen(json)
 									,out);
 		if (result) {
 			i=0;
-			while(out[i] != '{')
+			while(out[i] != '{' && i<256)
 				i++;
 			//do_it((uint8_t *)out+i, time);
 			//ts2date(*time, &date_out);
 			//printf("<SEND SERVER>\r\n%s\r\n<RCV>\r\n %s\r\n<SERVER TIME> %4d-%02d-%02d %02d:%02d:%02d\r\n",
 			//		json, out+i, date_out.year, date_out.month, date_out.day, date_out.hour, date_out.minute, date_out.second);
-			
+			if (i>=256)
+				i=0;
 			printf("<SEND SERVER>\r\n%s\r\n<RCV>\r\n %s\r\n",
 					json, out+i);
 			break;

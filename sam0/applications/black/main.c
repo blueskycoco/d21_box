@@ -203,16 +203,19 @@ void upload_json(uint8_t *xt_data, uint32_t xt_len)
 	uint8_t device_id_len = strlen(cur_libre_serial_no);
 	toHex(&device_id_len, 1, json);
 	memcpy(json+2, cur_libre_serial_no, device_id_len);
-	toHex((uint8_t *)&xt_len, 2,json+2+device_id_len);
+	uint32_t tmp = ((xt_len << 8)&0xff00) | ((xt_len>>8) & 0x00ff);
+	toHex((uint8_t *)&tmp, 2,json+2+device_id_len);
 	toHex(xt_data, xt_len, json+2+device_id_len+4);
-	printf("ORI\r\n%02x",device_id_len);
-	printf("%s",cur_libre_serial_no);
-	printf("%02x",xt_len);
-	for(i=0; i<xt_len; i++)
-		printf("%02x", xt_data[i]);
-	printf("\r\nHEX\r\n");
-	for(i=0;i<2086;i++)
-		printf("%c",json[i]);
+	//printf("ORI\r\n%02x",device_id_len);
+	//printf("%s",cur_libre_serial_no);
+	//printf("%04x",xt_len);
+	//for(i=0; i<xt_len; i++)
+	//	printf("%02x", xt_data[i]);
+	//printf("\r\nHEX\r\n");
+	//for(i=0;i<2086;i++)
+	//	printf("%c",json[i]);
+	//printf("%s\r\n", json);
+	//printf("begin send server %d\r\n",strlen(json));
 	gprs_power(1);
 	gprs_config();
 	if (upload_data(json,&server_time))	{
