@@ -68,7 +68,7 @@ static uint8_t gprs_send_cmd(const uint8_t *cmd, int len,int need_connect,uint8_
 		enum status_code ret = usart_serial_read_packet(&gprs_uart_module, rcv, 256, &rlen);
 		//printf("%d %d %d\r\n",ret,rlen,i);
 		if (rlen >= 2 && (ret == STATUS_OK || ret == STATUS_ERR_TIMEOUT)) {
-			//printf("%s\r\n", rcv);
+			printf("%s\r\n", rcv);
 			if (need_connect) {
 				if (strstr((const char *)rcv, "CONNECT") != NULL || strstr((const char *)rcv, "OK")!= NULL
 					||strstr((const char *)rcv, "ERROR")!= NULL) {
@@ -313,15 +313,15 @@ uint8_t gprs_config(void)
 }
 
 
-//uint8_t *send=NULL;
+uint8_t *send=NULL;
 //uint8_t *len_string=NULL;
 #define HTTP_HEADER "POST /weitang/sgSugarRecord/xiaohei/upload HTTP/1.1\r\nHOST: stage.boyibang.com\r\nAccept: */*\r\nUser-Agent: QUECTEL_MODULE\r\nConnection: Keep-Alive\r\nContent-Type: application/json\r\nContent-Length: %d\r\n\r\n%s"
 
-uint8_t send[2420] = {0};
-uint8_t http_post(uint8_t *data, int len, char *rcv)
+static uint8_t http_post(uint8_t *data, int len, char *rcv)
 {
 	uint8_t result = 0;
 	uint8_t post_cmd[32] = {0};
+	//uint8_t send[2420] = {0};
 	//uint8_t len_string[1400] = {0};	
 	//uint8_t http_header[] = "POST /weitang/sgSugarRecord/xiaohei/upload_json HTTP/1.1\r\nHOST: stage.boyibang.com\r\nAccept: */*\r\nUser-Agent: QUECTEL_MODULE\r\nConnection: Keep-Alive\r\nContent-Type: application/json\r\nContent-Length: %d\r\n\r\n%s";
 	const uint8_t read_response[] = "AT+QHTTPREAD=30\n";
@@ -339,7 +339,7 @@ uint8_t http_post(uint8_t *data, int len, char *rcv)
 		//	return 0;
 		//	}
 	}*/
-	memset(send,0,2420);
+	memset(send,0,1420);
 	//memset(len_string,0,len+32);
 	//strcpy((char *)send,(const char *)http_header);
 	//sprintf((char *)len_string,"Content-Length: %d\r\n\r\n%s",len,data);
@@ -371,7 +371,7 @@ uint8_t http_post(uint8_t *data, int len, char *rcv)
 		printf("there is no response from m26 1\r\n");
 	//free(send);
 	//free(len_string);
-	printf("66 %d\r\n",result);
+	printf("77 %d\r\n",result);
 	return result;
 }
 uint8_t upload_data(char *json, uint32_t *time)
@@ -381,7 +381,7 @@ uint8_t upload_data(char *json, uint32_t *time)
 	char out[256] = {0};
 	int n = 0,i = 0;
 	while (n < MAX_TRY) {
-		printf("upload data\r\n%s\r\n",json);
+		//printf("upload data\r\n%s\r\n",json);
 		memset(out,0,256);
 		result = http_post((uint8_t *)json,strlen(json)
 									,out);

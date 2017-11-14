@@ -21,6 +21,8 @@ int32_t cur_ts = -1;
 int32_t bak_ts = -1;
 int32_t max_ts = 0;
 uint32_t server_time = 0;
+extern uint8_t *buf;
+extern uint8_t *send;
 extern uint8_t cur_libre_serial_no[32];
 extern void ts2date(uint32_t time, struct rtc_calendar_time *date_out);
 char device_serial_no[33] = {0};
@@ -145,7 +147,8 @@ static void enable_button_interrupt(void)
 			EXTINT_CALLBACK_TYPE_DETECT);
 }
 
-char json[2086] = {0};
+//char json[2086] = {0};
+char *json = NULL;
 void upload_json(uint8_t *xt_data, uint32_t xt_len)
 {
 	
@@ -155,7 +158,7 @@ void upload_json(uint8_t *xt_data, uint32_t xt_len)
 	
 	if (!xt_data || xt_len == 0)
 		return;
-	memset(json,0,2086);	
+	memset(json,0,1186);	
 	for (i = 0; i < xt_len;) {
 		/* |**|****|*| */
 		ts = xt_data[i+2] << 24 | 
@@ -271,10 +274,13 @@ int main(void)
 			(unsigned)serial_no[2], (unsigned)serial_no[3]);
 	black_system_init();
 	enable_button_interrupt();
-	printf("ID %x %x %x %x \r\n", (unsigned int)serial_no[0],
+	printf(">>ID %x %x %x %x \r\n", (unsigned int)serial_no[0],
 			(unsigned int)serial_no[1], (unsigned int)serial_no[2], 
 			(unsigned int)serial_no[3]);
-	init_rtc();				
+	init_rtc();	
+	json = (char *)malloc(1186*sizeof(char));
+	buf = (uint8_t *)malloc(550*sizeof(uint8_t));
+	send = (uint8_t *)malloc(1420*sizeof(uint8_t));
 	//gprs_test();
 	//return 1;
 	while (true) {
