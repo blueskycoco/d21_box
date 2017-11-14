@@ -312,19 +312,20 @@ uint8_t gprs_config(void)
 	return result;
 }
 
-uint8_t *send=NULL;
+uint8_t send[2420] = {0};
+
+//uint8_t *send=NULL;
 //uint8_t *len_string=NULL;
-//#define HTTP_HEADER "POST /weitang/sgSugarRecord/xiaohei/upload_json HTTP/1.1\r\nHOST: stage.boyibang.com\r\nAccept: */*\r\nUser-Agent: QUECTEL_MODULE\r\nConnection: Keep-Alive\r\nContent-Type: application/json\r\nContent-Length: %d\r\n\r\n%s"
+#define HTTP_HEADER "POST /weitang/sgSugarRecord/xiaohei/upload HTTP/1.1\r\nHOST: stage.boyibang.com\r\nAccept: */*\r\nUser-Agent: QUECTEL_MODULE\r\nConnection: Keep-Alive\r\nContent-Type: application/json\r\nContent-Length: %d\r\n\r\n%s"
 
 uint8_t http_post(uint8_t *data, int len, char *rcv)
 {
 	uint8_t result = 0;
 	uint8_t post_cmd[32] = {0};
-	//uint8_t send[2048] = {0};
 	//uint8_t len_string[1400] = {0};	
 	//uint8_t http_header[] = "POST /weitang/sgSugarRecord/xiaohei/upload_json HTTP/1.1\r\nHOST: stage.boyibang.com\r\nAccept: */*\r\nUser-Agent: QUECTEL_MODULE\r\nConnection: Keep-Alive\r\nContent-Type: application/json\r\nContent-Length: %d\r\n\r\n%s";
 	const uint8_t read_response[] = "AT+QHTTPREAD=30\n";
-	//printf("post\r\n");
+	/*printf("post\r\n");
 	if (send == NULL) {
 		send = (uint8_t *)malloc(len+200);
 		if (send == NULL) {
@@ -337,12 +338,13 @@ uint8_t http_post(uint8_t *data, int len, char *rcv)
 		//	printf("can't malloc len_string\r\n");
 		//	return 0;
 		//	}
-	}
-	memset(send,0,len+200);
+	}*/
+	memset(send,0,2420);
 	//memset(len_string,0,len+32);
 	//strcpy((char *)send,(const char *)http_header);
 	//sprintf((char *)len_string,"Content-Length: %d\r\n\r\n%s",len,data);
-	sprintf((char *)send,"POST /weitang/sgSugarRecord/xiaohei/upload HTTP/1.1\r\nHOST: stage.boyibang.com\r\nAccept: */*\r\nUser-Agent: QUECTEL_MODULE\r\nConnection: Keep-Alive\r\nContent-Type: application/json\r\nContent-Length: %d\r\n\r\n%s",len,data);
+	//sprintf((char *)send,"POST /weitang/sgSugarRecord/xiaohei/upload HTTP/1.1\r\nHOST: stage.boyibang.com\r\nAccept: */*\r\nUser-Agent: QUECTEL_MODULE\r\nConnection: Keep-Alive\r\nContent-Type: application/json\r\nContent-Length: %d\r\n\r\n%s",len,data);
+	sprintf((char *)send, HTTP_HEADER,len,data);
 	//strcat((char *)send,(const char *)len_string);
 	sprintf((char *)post_cmd, "AT+QHTTPPOST=%d,50,10\n", strlen((const char *)send));
 	strcat((char *)send,"\n");
@@ -350,17 +352,17 @@ uint8_t http_post(uint8_t *data, int len, char *rcv)
 	
 	if (strstr((const char *)rcv, "CONNECT") != NULL) {		
 		memset(rcv,0,256);
-		printf("%s",send);
-		printf("1\r\n");
+		//printf("%s",send);
+		//printf("1\r\n");
 		gprs_send_cmd(send,strlen((const char *)send),0,(uint8_t *)rcv,80);
-		printf("2\r\n");
+		//printf("2\r\n");
 		if (strstr((const char *)rcv, "OK") != NULL) {
-			printf("3\r\n");
+			//printf("3\r\n");
 			memset(rcv,0,256);
 			result = gprs_send_cmd(read_response, strlen((const char *)read_response),0,(uint8_t *)rcv,1);
-			printf("4 %s\r\n",rcv);
+			//printf("4 %s\r\n",rcv);
 			gprs_send_cmd(NULL,0,1,(uint8_t *)post_cmd,10);
-			printf("5\r\n");
+			//printf("5\r\n");
 		}
 		else
 			printf("there is no response from m26 2\r\n");
@@ -369,7 +371,7 @@ uint8_t http_post(uint8_t *data, int len, char *rcv)
 		printf("there is no response from m26 1\r\n");
 	//free(send);
 	//free(len_string);
-	printf("6\r\n");
+	//printf("66 %d\r\n",result);
 	return result;
 }
 uint8_t upload_data(char *json, uint32_t *time)
@@ -379,10 +381,11 @@ uint8_t upload_data(char *json, uint32_t *time)
 	char out[256] = {0};
 	int n = 0,i = 0;
 	while (n < MAX_TRY) {
-		printf("upload data\r\n%s\r\n",json);
+		//printf("upload data\r\n%s\r\n",json);
 		memset(out,0,256);
 		result = http_post((uint8_t *)json,strlen(json)
 									,out);
+		//printf("upload data result %d\r\n", result);
 		if (result) {
 			i=0;
 			while(out[i] != '{' && i<256)

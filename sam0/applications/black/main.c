@@ -7,7 +7,6 @@
 #include "gprs.h"
 #include "usb.h"
 #include "rtc.h"
-#include "flash.h"
 #include "history.h"
 #include "calendar.h"
 #include "apollo.h"
@@ -194,7 +193,7 @@ void upload_json(uint8_t *xt_data, uint32_t xt_len)
 			}
 			#endif
 		}
-		i=i+8;
+		i=i+11;
 	}
 	/*store data & toHex 
 	   id_len0|id_len1|serial_no|len0|len1|len2|len3|data0|...|datan
@@ -222,6 +221,7 @@ void upload_json(uint8_t *xt_data, uint32_t xt_len)
 		if (max_ts > bak_ts)
 			bak_ts = max_ts;
 	}
+	printf("upload json done\r\n");
 	#if 0
 	//printf("\r\nupload last data\r\n");
 	if (upload_num > 0) {
