@@ -145,17 +145,17 @@ static void enable_button_interrupt(void)
 			EXTINT_CALLBACK_TYPE_DETECT);
 }
 
+char json[2086] = {0};
 void upload_json(uint8_t *xt_data, uint32_t xt_len)
 {
 	
 	int32_t ts;
 	unsigned int i,upload_num=0;	
-	char json[2086] = {0};
 	uint32_t total_len = 0;
 	
 	if (!xt_data || xt_len == 0)
 		return;
-	
+	memset(json,0,2086);	
 	for (i = 0; i < xt_len;) {
 		/* |**|****|*| */
 		ts = xt_data[i+2] << 24 | 

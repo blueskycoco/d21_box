@@ -312,12 +312,12 @@ uint8_t gprs_config(void)
 	return result;
 }
 
-uint8_t send[2420] = {0};
 
 //uint8_t *send=NULL;
 //uint8_t *len_string=NULL;
 #define HTTP_HEADER "POST /weitang/sgSugarRecord/xiaohei/upload HTTP/1.1\r\nHOST: stage.boyibang.com\r\nAccept: */*\r\nUser-Agent: QUECTEL_MODULE\r\nConnection: Keep-Alive\r\nContent-Type: application/json\r\nContent-Length: %d\r\n\r\n%s"
 
+uint8_t send[2420] = {0};
 uint8_t http_post(uint8_t *data, int len, char *rcv)
 {
 	uint8_t result = 0;
@@ -352,7 +352,7 @@ uint8_t http_post(uint8_t *data, int len, char *rcv)
 	
 	if (strstr((const char *)rcv, "CONNECT") != NULL) {		
 		memset(rcv,0,256);
-		//printf("%s",send);
+		printf("%s",send);
 		//printf("1\r\n");
 		gprs_send_cmd(send,strlen((const char *)send),0,(uint8_t *)rcv,80);
 		//printf("2\r\n");
@@ -371,7 +371,7 @@ uint8_t http_post(uint8_t *data, int len, char *rcv)
 		printf("there is no response from m26 1\r\n");
 	//free(send);
 	//free(len_string);
-	//printf("66 %d\r\n",result);
+	printf("66 %d\r\n",result);
 	return result;
 }
 uint8_t upload_data(char *json, uint32_t *time)
@@ -381,11 +381,11 @@ uint8_t upload_data(char *json, uint32_t *time)
 	char out[256] = {0};
 	int n = 0,i = 0;
 	while (n < MAX_TRY) {
-		//printf("upload data\r\n%s\r\n",json);
+		printf("upload data\r\n%s\r\n",json);
 		memset(out,0,256);
 		result = http_post((uint8_t *)json,strlen(json)
 									,out);
-		//printf("upload data result %d\r\n", result);
+		printf("upload data result %d\r\n", result);
 		if (result) {
 			i=0;
 			while(out[i] != '{' && i<256)
