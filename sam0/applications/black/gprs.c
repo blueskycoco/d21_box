@@ -310,9 +310,11 @@ uint8_t gprs_config(void)
 uint8_t *send=NULL;
 #define HTTP_HEADER "POST /weitang/sgSugarRecord/xiaohei/upload HTTP/1.1\r\nHOST: stage.boyibang.com\r\nAccept: */*\r\nUser-Agent: QUECTEL_MODULE\r\nConnection: Keep-Alive\r\nContent-Type: application/json\r\nContent-Length: %d\r\n\r\n%s"
 
-static uint8_t http_post(uint8_t *data, int len, char *rcv)
+static uint32_t http_post(uint8_t *data, int len)
 {
 	uint8_t result = 0;
+	uint32_t time = 0;
+	char rcv[256] = {0};
 	uint8_t post_cmd[32] = {0};
 	const uint8_t read_response[] = "AT+QHTTPREAD=30\n";
 	memset(send,0,1420);
@@ -328,6 +330,25 @@ static uint8_t http_post(uint8_t *data, int len, char *rcv)
 		if (strstr((const char *)rcv, "OK") != NULL) {
 			memset(rcv,0,256);
 			result = gprs_send_cmd(read_response, strlen((const char *)read_response),0,(uint8_t *)rcv,1);
+			if (result) {
+				int i=0;
+				while(rcv[i] != '{' && i<256)
+					i++;
+				printf("<RCV>\r\n%s\r\n",rcv+i);
+				char *time_str = (char *)strstr(rcv+i, "systemTime");
+				i=1;
+				//memset(post_cmd, 0, 32);
+				if (time_str != NULL) {
+					while (	i<strlen(time_str) && time_str[i]!='}')
+					{
+						//post_cmd[i-2] = time_str[i];
+						printf("%c\r\n", time_str[i]);
+						time = time*10 + time_str[i] - '0';
+						i++;
+					}
+					printf("time %d\r\n", time);
+				}
+			}
 			gprs_send_cmd(NULL,0,1,(uint8_t *)post_cmd,10);
 		}
 		else
@@ -336,29 +357,30 @@ static uint8_t http_post(uint8_t *data, int len, char *rcv)
 	else
 		printf("there is no response from m26 1\r\n");
 	printf("rcv %s\r\n", rcv);
-	return result;
+	return time;
 }
 uint8_t upload_data(char *json, uint32_t *time)
 {
 	struct rtc_calendar_time date_out;
 	uint8_t result = 0;
-	char out[256] = {0};
+	//char out[256] = {0};
 	int n = 0,i = 0;
 	while (n < MAX_TRY) {
 		//printf("upload data\r\n%s\r\n",json);
-		memset(out,0,256);
-		result = http_post((uint8_t *)json,strlen(json)
-									,out);
-		printf("upload data result %d, %s\r\n", result,out);
-		if (result) {
-			i=0;
-			while(out[i] != '{' && i<256)
-				i++;
+		printf("<SEND SERVER>\r\n%s\r\n",json);
+		//memset(out,0,256);
+		*time = http_post((uint8_t *)json,strlen(json));
+		//printf("upload data result %d, %s\r\n", result,out);
+		if (*time != 0) {
+			//i=0;
+			//while(out[i] != '{' && i<256)
+			//	i++;
 			//ts2date(*time, &date_out);
-			if (i>=256)
-				i=0;
-			printf("<SEND SERVER>\r\n%s\r\n<RCV>\r\n %s\r\n",
-					json, out+i);
+			//if (i>=256)
+			//	i=0;
+			//printf("<SEND SERVER>\r\n%s\r\n<RCV>\r\n %s\r\n",
+			//		json, out+i);
+			result = 1;
 			break;
 		}
 		n++;
