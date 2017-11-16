@@ -24,20 +24,16 @@ uint32_t server_time = 0;
 extern uint8_t *buf;
 extern uint8_t *send;
 extern uint8_t cur_libre_serial_no[32];
+uint8_t *xt_data_now=NULL;
+uint32_t xt_len_now=0;
 extern void ts2date(uint32_t time, struct rtc_calendar_time *date_out);
 char device_serial_no[33] = {0};
 static void black_system_init(void)
 {
 	struct nvm_config nvm_cfg;
-	//struct port_config pin;
 
 	/* Initialize the system */
 	system_init();
-
-	/*Configures PORT for LED0*/
-	//port_get_config_defaults(&pin);
-	//pin.direction = PORT_PIN_DIR_OUTPUT;
-	//port_pin_set_config(LED0_PIN, &pin);
 
 	/* Initialize the NVM */
 	nvm_get_config_defaults(&nvm_cfg);
@@ -159,6 +155,7 @@ void upload_json(uint8_t *xt_data, uint32_t xt_len)
 	if (!xt_data || xt_len == 0)
 		return;
 	memset(json,0,1186);	
+	xt_len_now=0;
 	for (i = 0; i < xt_len;) {
 		/* |**|****|*| */
 		ts = xt_data[i+2] << 24 | 
@@ -169,79 +166,30 @@ void upload_json(uint8_t *xt_data, uint32_t xt_len)
 			/*check ts > last ts*/
 			if (ts > max_ts)
 				max_ts = ts;
-			#if 0
-			int16_t gid = xt_data[i] << 8 | xt_data[i+1];
-			uint32_t bloodSugar = xt_data[i+6]*142+22;
-			//printf("add ts %d,gid %d, blood %d to list\r\n", (int)ts,
-			//	(int)gid, (int)bloodSugar);
-			build_json(json, 0, bloodSugar, ts, gid, 
-							device_serial_no);
-			upload_num++;
-			//printf("num %d\r\n", upload_num);
-			if (upload_num >= MAX_JSON) {
-				/*json item > max_json*/
-				//printf("\r\nbegin upload\r\n");
-				//printf("%s", json);
-				//printf("begin power on gprs\r\n");
-				gprs_power(1);
-				gprs_config();
-				if (upload_data(json,&server_time))	{
-					if (max_ts > bak_ts)
-						bak_ts = max_ts;
-				}
-				//free(json);
-				//json = NULL;
-				memset(json,0,256);
-				upload_num=0;
-			}
-			#endif
+			memcpy(xt_data_now+xt_len_now, xt_data+i,11);
+			xt_len_now += 11;
 		}
 		i=i+11;
 	}
 	/*store data & toHex 
 	   id_len0|id_len1|serial_no|len0|len1|len2|len3|data0|...|datan
 	   */
-	
-	uint8_t device_id_len = strlen(cur_libre_serial_no);
-	toHex(&device_id_len, 1, json);
-	memcpy(json+2, cur_libre_serial_no, device_id_len);
-	uint32_t tmp = ((xt_len << 8)&0xff00) | ((xt_len>>8) & 0x00ff);
-	toHex((uint8_t *)&tmp, 2,json+2+device_id_len);
-	toHex(xt_data, xt_len, json+2+device_id_len+4);
-	//printf("ORI\r\n%02x",device_id_len);
-	//printf("%s",cur_libre_serial_no);
-	//printf("%04x",xt_len);
-	//for(i=0; i<xt_len; i++)
-	//	printf("%02x", xt_data[i]);
-	//printf("\r\nHEX\r\n");
-	//for(i=0;i<2086;i++)
-	//	printf("%c",json[i]);
-	//printf("%s\r\n", json);
-	//printf("begin send server %d\r\n",strlen(json));
-	gprs_power(1);
-	gprs_config();
-	if (upload_data(json,&server_time))	{
-		if (max_ts > bak_ts)
-			bak_ts = max_ts;
-	}
-	printf("upload json done\r\n");
-	#if 0
-	//printf("\r\nupload last data\r\n");
-	if (upload_num > 0) {
-		/*upload num < MAX_JSON*/
+	if (xt_len_now > 0) {
+		uint8_t device_id_len = strlen(cur_libre_serial_no);
+		toHex(&device_id_len, 1, json);
+		memcpy(json+2, cur_libre_serial_no, device_id_len);
+		uint32_t tmp = ((xt_len_now << 8)&0xff00) | ((xt_len_now>>8) & 0x00ff);
+		toHex((uint8_t *)&tmp, 2,json+2+device_id_len);
+		toHex(xt_data_now, xt_len_now, json+2+device_id_len+4);
 		gprs_power(1);
 		gprs_config();
-		if (upload_data(json,&server_time)) {
+		if (upload_data(json,&server_time))	{
 			if (max_ts > bak_ts)
 				bak_ts = max_ts;
 		}
-		//printf("%s\r\n",json);
-		//free(json);
-		//json = NULL;
-		memset(json,0,256);
-		upload_num=0;
 	}
-	#endif
+	else
+		printf("nothing to upload\r\n");
 }
 static void update_time(uint32_t time)
 {
@@ -279,10 +227,9 @@ int main(void)
 			(unsigned int)serial_no[3]);
 	init_rtc();	
 	json = (char *)malloc(1186*sizeof(char));
-	buf = (uint8_t *)malloc(550*sizeof(uint8_t));
+	buf = (uint8_t *)malloc(550*sizeof(uint8_t));	
+	xt_data_now = (uint8_t *)malloc(550*sizeof(uint8_t));
 	send = (uint8_t *)malloc(1420*sizeof(uint8_t));
-	//gprs_test();
-	//return 1;
 	while (true) {
 		usb_power(1);
 		delay_s(5);
@@ -291,9 +238,6 @@ int main(void)
 				uhc_resume();
 			delay_ms(100);
 			if (!uhc_is_suspend()) {
-				//if (strlen(cur_libre_serial_no) == 0)
-					//if (!apollo_init())
-					//	memset(cur_libre_serial_no, 0, 32);
 				apollo_init();	
 				if (strlen(cur_libre_serial_no) != 0) {
 					if (cur_ts == -1 || bak_ts == -1) {
@@ -307,7 +251,6 @@ int main(void)
 					if (cur_ts < bak_ts)
 						update_time(server_time);
 				}
-				//printf("suspend usb\r\n");
 				uhc_suspend(false);
 			}
 		} else

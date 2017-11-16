@@ -1,7 +1,6 @@
 #include <asf.h>
 #include <stdlib.h>
 #include <string.h>
-#include "cJSON.h"
 #include "conf_bootloader.h"
 #include "misc.h"
 #include <rtc_calendar.h>
@@ -42,76 +41,12 @@ void console_init(void)
 char *build_json(char *old, char type, uint32_t bloodSugar, int actionTime, int gid, 
 		char *device_id)
 {
-#if 1
 	sprintf(old, JSON,type,bloodSugar,actionTime,gid,device_id);
 	return old;
-#else
-	cJSON *root;
-	char *out = NULL;
-
-	if (old != NULL) {
-		root = cJSON_Parse(old);
-		if(old) {
-			free(old);
-			old = NULL;
-		}
-		cJSON *array= cJSON_GetObjectItem(root,DATA);
-		cJSON *item = cJSON_CreateObject();
-		cJSON_AddItemToArray(array, item);
-		cJSON_AddItemToObject(item, TYPE, cJSON_CreateNumber(type));
-		cJSON_AddItemToObject(item, XT, cJSON_CreateNumber(bloodSugar));
-		cJSON_AddItemToObject(item, TS, cJSON_CreateNumber(actionTime));
-		cJSON_AddItemToObject(item, GID, cJSON_CreateNumber(gid));
-		out=cJSON_PrintUnformatted(root);	
-		cJSON_Delete(root);
-	} else {
-		root = cJSON_CreateObject();
-		cJSON *array = cJSON_CreateArray();
-		cJSON *item = cJSON_CreateObject();
-		cJSON_AddItemToObject(item, TYPE, cJSON_CreateNumber(type));
-		cJSON_AddItemToObject(item, XT, cJSON_CreateNumber(bloodSugar));
-		cJSON_AddItemToObject(item, TS, cJSON_CreateNumber(actionTime));
-		cJSON_AddItemToObject(item, GID, cJSON_CreateNumber(gid));
-		cJSON_AddItemToArray(array, item);
-		cJSON_AddItemToObject(root, DATA, array);
-		cJSON_AddItemToObject(root, DID, cJSON_CreateString(device_id));
-		out=cJSON_PrintUnformatted(root);
-		cJSON_Delete(root);
-	}
-	return out;
-#endif
 }
 bool do_it(uint8_t *in, uint32_t *time)
 {
 	return false;
-#if 0
-	cJSON *root = NULL, *data = NULL, *ts = NULL;
-	bool result = false;
-	if (in != NULL) {
-		root = cJSON_Parse((const char *)in);
-		if (root) {
-			data = cJSON_GetObjectItem(root, "ext");
-			cJSON *status = cJSON_GetObjectItem(root, "status");
-			if (status) {
-				if (status->valueint == 0)
-					result = true;
-				printf("result %d\r\n", result);
-			}
-		}
-		if (data)
-			ts = cJSON_GetObjectItem(data, "systemTime");
-		if (ts) {
-			if (ts->type == cJSON_Number) {
-				*time = ts->valueint;
-				printf("systemTime: %d\r\n", *time);
-			}
-		}
-
-		if (root)
-			cJSON_Delete(root);			
-	}
-	return result;
-#endif
 }
 void ts2date(uint32_t time, struct rtc_calendar_time *date_out)
 {
