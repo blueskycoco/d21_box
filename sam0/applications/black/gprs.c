@@ -336,13 +336,13 @@ static uint32_t http_post(uint8_t *data, int len)
 					i++;
 				printf("<RCV>\r\n%s\r\n",rcv+i);
 				char *time_str = (char *)strstr(rcv+i, "systemTime");
-				i=1;
+				i=12;
 				//memset(post_cmd, 0, 32);
 				if (time_str != NULL) {
 					while (	i<strlen(time_str) && time_str[i]!='}')
 					{
 						//post_cmd[i-2] = time_str[i];
-						printf("%c\r\n", time_str[i]);
+						//printf("%c\r\n", time_str[i]);
 						time = time*10 + time_str[i] - '0';
 						i++;
 					}
