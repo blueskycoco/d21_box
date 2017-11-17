@@ -7,6 +7,7 @@
 #define MAX_TRY 3
 static struct usart_module gprs_uart_module;
 static bool gprs_status = false;
+char *imsi_str = NULL;
 struct usart_config usart_conf;
 extern void ts2date(uint32_t time, struct rtc_calendar_time *date_out);
 void gprs_init(void)
@@ -66,7 +67,7 @@ static uint8_t gprs_send_cmd(const uint8_t *cmd, int len,int need_connect,uint8_
 	while(1) {
 		enum status_code ret = usart_serial_read_packet(&gprs_uart_module, rcv, 256, &rlen);
 		if (rlen >= 2 && (ret == STATUS_OK || ret == STATUS_ERR_TIMEOUT)) {
-			printf("%s\r\n", rcv);
+			//printf("%s\r\n", rcv);
 			if (need_connect) {
 				if (strstr((const char *)rcv, "CONNECT") != NULL || strstr((const char *)rcv, "OK")!= NULL
 					||strstr((const char *)rcv, "ERROR")!= NULL) {
@@ -262,6 +263,17 @@ uint8_t gprs_config(void)
 	const uint8_t url[] 		= "http://stage.boyibang.com/weitang/sgSugarRecord/xiaohei/upload_json\n";
 	if (gprs_status)
 		return 0;
+	gprs_send_cmd(qifcimi, strlen((const char *)qifcimi),0,rcv,1);
+	char *cimi = (char *)strstr(rcv,"CIMI");
+	memset(imsi_str,'\0',20);
+	if (cimi != NULL) {
+		int i=6;
+		while (i<strlen(cimi) && cimi[i] != '\r') {
+			imsi_str[i-6] = cimi[i];
+			i++;
+		}
+		printf("%s", imsi_str);		
+	}
 	while(1) {
 		gprs_send_cmd(cmd5, strlen((const char *)cmd5),0,rcv,1);
 		if (strstr((const char *)rcv, "+CGREG: 0,1") != NULL) 
@@ -317,7 +329,7 @@ static uint32_t http_post(uint8_t *data, int len)
 	char rcv[256] = {0};
 	uint8_t post_cmd[32] = {0};
 	const uint8_t read_response[] = "AT+QHTTPREAD=30\n";
-	memset(send,0,1420);
+	memset(send,0,1520);
 	sprintf((char *)send, HTTP_HEADER,len,data);
 	sprintf((char *)post_cmd, "AT+QHTTPPOST=%d,50,10\n", strlen((const char *)send));
 	strcat((char *)send,"\n");
@@ -325,7 +337,7 @@ static uint32_t http_post(uint8_t *data, int len)
 	
 	if (strstr((const char *)rcv, "CONNECT") != NULL) {		
 		memset(rcv,0,256);
-		printf("%s",send);
+		//printf("%s",send);
 		gprs_send_cmd(send,strlen((const char *)send),0,(uint8_t *)rcv,80);
 		if (strstr((const char *)rcv, "OK") != NULL) {
 			memset(rcv,0,256);

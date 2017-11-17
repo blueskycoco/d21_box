@@ -13,6 +13,7 @@
 #define MAX_JSON 1//20
 extern bool libre_found;
 bool long_press = false;
+extern char *imsi_str;
 #if CONSOLE_OUTPUT_ENABLED
 #define APP_HEADER "samd21 black box\r\n"
 #endif
@@ -21,6 +22,7 @@ int32_t cur_ts = -1;
 int32_t bak_ts = -1;
 int32_t max_ts = 0;
 uint32_t server_time = 0;
+uint32_t serial_no[4];
 extern uint8_t *buf;
 extern uint8_t *send;
 extern uint8_t cur_libre_serial_no[32];
@@ -154,7 +156,7 @@ void upload_json(uint8_t *xt_data, uint32_t xt_len)
 	
 	if (!xt_data || xt_len == 0)
 		return;
-	memset(json,0,1186);	
+	memset(json,0,1286);	
 	xt_len_now=0;
 	for (i = 0; i < xt_len;) {
 		/* |**|****|*| */
@@ -172,17 +174,41 @@ void upload_json(uint8_t *xt_data, uint32_t xt_len)
 		i=i+11;
 	}
 	/*store data & toHex 
-	   id_len0|id_len1|serial_no|len0|len1|len2|len3|data0|...|datan
+	   id_len0|id_len1|serial_no|imsi_len0|imsi_len1|imsi|mcu_ID ..64.|len0|len1|len2|len3|data0|...|datan
 	   */
 	if (xt_len_now > 0) {
-		uint8_t device_id_len = strlen(cur_libre_serial_no);
-		toHex(&device_id_len, 1, json);
-		memcpy(json+2, cur_libre_serial_no, device_id_len);
-		uint32_t tmp = ((xt_len_now << 8)&0xff00) | ((xt_len_now>>8) & 0x00ff);
-		toHex((uint8_t *)&tmp, 2,json+2+device_id_len);
-		toHex(xt_data_now, xt_len_now, json+2+device_id_len+4);
 		gprs_power(1);
 		gprs_config();
+		uint32_t offs = 0;
+		uint8_t device_id_len = strlen(cur_libre_serial_no);
+		toHex(&device_id_len, 1, json);
+		offs += 2;
+		memcpy(json+offs, cur_libre_serial_no, device_id_len);
+		offs += device_id_len;
+		uint8_t imsi_len = strlen(imsi_str);
+		printf("imsi_len %d\r\n",imsi_len);
+		toHex(&imsi_len, 1, json+offs);
+		offs += 2;
+		memcpy(json+offs, imsi_str, imsi_len);
+		offs += imsi_len;
+		printf("json %s\r\n",json);
+		uint8_t *serial_no_tmp = (uint8_t *)serial_no;
+		uint8_t tmp1 = 0,tmp2 = 0;
+		for (i=0;i<32;i=i+4)
+		{
+			tmp1 = serial_no_tmp[i];
+			serial_no_tmp[i] = serial_no_tmp[i+3];
+			serial_no_tmp[i+3] = tmp1;
+			tmp2 = serial_no_tmp[i+1];
+			serial_no_tmp[i+1] = serial_no_tmp[i+2];
+			serial_no_tmp[i+2] = tmp2;
+		}
+		toHex((uint8_t *)serial_no_tmp, 32, json+offs);
+		offs += 64;		
+		uint32_t tmp = ((xt_len_now << 8)&0xff00) | ((xt_len_now>>8) & 0x00ff);
+		toHex((uint8_t *)&tmp, 2,json+offs);
+		offs += 4;
+		toHex(xt_data_now, xt_len_now, json+offs);
 		if (upload_data(json,&server_time))	{
 			if (max_ts > bak_ts)
 				bak_ts = max_ts;
@@ -212,7 +238,6 @@ static void update_time(uint32_t time)
 }
 int main(void)
 {
-	uint32_t serial_no[4];
 	serial_no[0] = *(uint32_t *)0x0080A00C;
 	serial_no[1] = *(uint32_t *)0x0080A040;
 	serial_no[2] = *(uint32_t *)0x0080A044;
@@ -226,10 +251,11 @@ int main(void)
 			(unsigned int)serial_no[1], (unsigned int)serial_no[2], 
 			(unsigned int)serial_no[3]);
 	init_rtc();	
-	json = (char *)malloc(1186*sizeof(char));
+	json = (char *)malloc(1286*sizeof(char));
 	buf = (uint8_t *)malloc(550*sizeof(uint8_t));	
 	xt_data_now = (uint8_t *)malloc(550*sizeof(uint8_t));
-	send = (uint8_t *)malloc(1420*sizeof(uint8_t));
+	send = (uint8_t *)malloc(1520*sizeof(uint8_t));
+	imsi_str = (char *)malloc(20*sizeof(char));
 	while (true) {
 		usb_power(1);
 		delay_s(5);
