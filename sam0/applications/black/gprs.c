@@ -270,16 +270,23 @@ uint8_t gprs_config(void)
 		delay_s(1);
 		
 	}
-	gprs_send_cmd(qifcimi, strlen((const char *)qifcimi),0,rcv,1);
-	char *cimi = (char *)strstr(rcv,"CIMI");
-	memset(imsi_str,'\0',20);
-	if (cimi != NULL) {
-		int i=6;
-		while (i<strlen(cimi) && cimi[i] != '\r') {
-			imsi_str[i-6] = cimi[i];
-			i++;
+	while (1) {
+		gprs_send_cmd(qifcimi, strlen((const char *)qifcimi),0,rcv,1);
+		printf("cimi %s\r\n", rcv);
+		if (strstr(rcv , "CME ERROR") == NULL) {
+		char *cimi = (char *)strstr(rcv,"CIMI");
+		memset(imsi_str,'\0',20);
+		if (cimi != NULL) {
+			int i=6;
+			while (i<strlen(cimi) && cimi[i] != '\r') {
+				imsi_str[i-6] = cimi[i];
+				i++;
+			}
+			printf("%s", imsi_str);		
+			break;
 		}
-		printf("%s", imsi_str);		
+		}
+		delay_s(1);		
 	}
 	result = gprs_send_cmd(qistat, strlen((const char *)qistat),0,rcv,1);
 	if (result) {

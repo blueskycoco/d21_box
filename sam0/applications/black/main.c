@@ -196,7 +196,7 @@ void upload_json(uint8_t *xt_data, uint32_t xt_len)
 		printf("json %s\r\n",json);
 		uint8_t *serial_no_tmp = (uint8_t *)serial_no;
 		uint8_t tmp1 = 0,tmp2 = 0;
-		for (i=0;i<32;i=i+4)
+		for (i=0;i<16;i=i+4)
 		{
 			tmp1 = serial_no_tmp[i];
 			serial_no_tmp[i] = serial_no_tmp[i+3];
@@ -205,8 +205,8 @@ void upload_json(uint8_t *xt_data, uint32_t xt_len)
 			serial_no_tmp[i+1] = serial_no_tmp[i+2];
 			serial_no_tmp[i+2] = tmp2;
 		}
-		toHex((uint8_t *)serial_no_tmp, 32, json+offs);
-		offs += 64;		
+		toHex((uint8_t *)serial_no_tmp, 16, json+offs);
+		offs += 32;		
 		uint32_t tmp = ((xt_len_now << 8)&0xff00) | ((xt_len_now>>8) & 0x00ff);
 		toHex((uint8_t *)&tmp, 2,json+offs);
 		offs += 4;
