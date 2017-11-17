@@ -79,12 +79,12 @@ uint32_t get_dev_ts(uint8_t *serial, uint8_t len)
 		return ts;
 	}
 	dev_num = (dev_info[0] << 8) | dev_info[1];
-	//printf("dev_num %d, input %s , len %d\r\n", dev_num,serial,len);
+	printf("dev_num %d, input %s , len %d\r\n", dev_num,serial,len);
 	if (dev_num != 0xffff) {
 		//int i = 0;
 		for (i=0; i<dev_num; i++) {
 			devx_len = dev_info[offset];
-			//printf("devx_len %d\r\n", devx_len);
+			printf("devx_len %d\r\n", devx_len);
 			if (devx_len == len) {
 				if (memcmp(serial, &(dev_info[offset+1]), len) == 0) {
 					found = true;

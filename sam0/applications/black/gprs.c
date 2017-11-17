@@ -263,6 +263,13 @@ uint8_t gprs_config(void)
 	const uint8_t url[] 		= "http://stage.boyibang.com/weitang/sgSugarRecord/xiaohei/upload_json\n";
 	if (gprs_status)
 		return 0;
+	while(1) {
+		gprs_send_cmd(cmd5, strlen((const char *)cmd5),0,rcv,1);
+		if (strstr((const char *)rcv, "+CGREG: 0,1") != NULL) 
+			break;
+		delay_s(1);
+		
+	}
 	gprs_send_cmd(qifcimi, strlen((const char *)qifcimi),0,rcv,1);
 	char *cimi = (char *)strstr(rcv,"CIMI");
 	memset(imsi_str,'\0',20);
@@ -273,13 +280,6 @@ uint8_t gprs_config(void)
 			i++;
 		}
 		printf("%s", imsi_str);		
-	}
-	while(1) {
-		gprs_send_cmd(cmd5, strlen((const char *)cmd5),0,rcv,1);
-		if (strstr((const char *)rcv, "+CGREG: 0,1") != NULL) 
-			break;
-		delay_s(1);
-		
 	}
 	result = gprs_send_cmd(qistat, strlen((const char *)qistat),0,rcv,1);
 	if (result) {

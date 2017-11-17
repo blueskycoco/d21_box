@@ -73,7 +73,9 @@ void ui_usb_connection_event(uhc_device_t *dev, bool b_present)
 		//cur_ts = -1;
 		bak_ts = -1;
 		memset(cur_libre_serial_no,0,32);
-	}
+		printf("usb disconnect\r\n");
+	} else
+		printf("usb connect\r\n");
 }
 void ui_usb_wakeup_event(void)
 {
@@ -222,9 +224,13 @@ static void update_time(uint32_t time)
 	struct rtc_calendar_time rtc_time;
 	/*set cur time*/
 	if (time != 0) {
-		printf("begin to save time\r\n");
+		printf("begin to save time 1\r\n");
 		ts2date(time, &rtc_time);
-		set_rtc_time(rtc_time);
+		printf("begin to save time 2 %d %d %d %d %d %d\r\n",
+			rtc_time.second,rtc_time.minute,rtc_time.hour,
+			rtc_time.day,rtc_time.month,rtc_time.year);
+		//set_rtc_time(rtc_time);
+		printf("begin to save time 3\r\n");
 		apollo_set_date_time(rtc_time.second,rtc_time.minute,rtc_time.hour,
 			rtc_time.day,rtc_time.month,rtc_time.year);
 		printf("end save time\r\n");
@@ -232,8 +238,9 @@ static void update_time(uint32_t time)
 
 	if (bak_ts > cur_ts) {
 		cur_ts = bak_ts;
+		printf("save ts 1 %d\r\n", (int)cur_ts);
 		save_dev_ts(cur_ts);
-		printf("save ts %d\r\n", (int)cur_ts);
+		printf("save ts 2 %d\r\n", (int)cur_ts);
 	}
 }
 int main(void)
