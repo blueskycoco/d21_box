@@ -86,6 +86,8 @@ uint32_t get_dev_ts(uint8_t *serial, uint8_t len)
 			devx_len = dev_info[offset];
 			printf("devx_len %d\r\n", devx_len);
 			if (devx_len == len) {
+				for (j=0;j<len;j++)
+					printf("%c<>%c\r\n",serial[j],dev_info[offset+1+j]);
 				if (memcmp(serial, &(dev_info[offset+1]), len) == 0) {
 					found = true;
 					ts = (dev_info[offset+len+2] << 24) |
@@ -110,13 +112,13 @@ uint32_t get_dev_ts(uint8_t *serial, uint8_t len)
 
 	if (!found) {
 		if (dev_num == 0xffff) {/*first in use*/
-			printf("this spi flash first in use\r\n");
+			printf("this 222 spi flash first in use %d\r\n",len);
 			dev_info[0] = 0x00;dev_info[1] = 0x01;
 			dev_info[2] = len;
 			memcpy(dev_info + 3, serial, len);
-			dev_info[4] = 0x00;dev_info[5] = 0x00;
-			dev_info[6] = 0x00;dev_info[7] = 0x00;
-			g_index = 4;
+			dev_info[len+4] = 0x00;dev_info[len+5] = 0x00;
+			dev_info[len+6] = 0x00;dev_info[len+7] = 0x00;
+			g_index = len+4;
 		} else {
 			printf("add new device at %d \r\n",offset);
 			dev_num++;

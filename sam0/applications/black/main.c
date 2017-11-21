@@ -17,6 +17,7 @@ extern char *imsi_str;
 #if CONSOLE_OUTPUT_ENABLED
 #define APP_HEADER "samd21 black box\r\n"
 #endif
+int32_t g_hour = -1;
 
 int32_t cur_ts = -1;
 int32_t bak_ts = -1;
@@ -244,7 +245,8 @@ static void update_time(uint32_t time)
 	}
 }
 int main(void)
-{
+{	
+	struct rtc_calendar_time rtc_time_now;
 	serial_no[0] = *(uint32_t *)0x0080A00C;
 	serial_no[1] = *(uint32_t *)0x0080A040;
 	serial_no[2] = *(uint32_t *)0x0080A044;
@@ -264,6 +266,16 @@ int main(void)
 	send = (uint8_t *)malloc(1520*sizeof(uint8_t));
 	imsi_str = (char *)malloc(20*sizeof(char));
 	while (true) {
+		get_rtc_time(&rtc_time_now);
+		if (rtc_time_now.hour == g_hour && long_press)
+		{
+			printf("continue to sleep %d %d %d\r\n",
+				rtc_time_now.hour,g_hour,long_press);
+			sleepmgr_enter_sleep();
+			continue;
+		}
+		long_press = true;
+		g_hour = rtc_time_now.hour;
 		usb_power(1);
 		delay_s(5);
 		if (libre_found) {
