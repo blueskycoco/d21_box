@@ -158,7 +158,7 @@ static inline void sleepmgr_lock_mode(enum sleepmgr_mode mode)
 
 	// Enter a critical section
 	flags = cpu_irq_save();
-
+	printf("sleepmgr_lock_mode %d\r\n", mode);
 	++sleepmgr_locks[mode];
 
 	// Leave the critical section
@@ -190,6 +190,7 @@ static inline void sleepmgr_unlock_mode(enum sleepmgr_mode mode)
 
 	// Enter a critical section
 	flags = cpu_irq_save();
+	printf("sleepmgr_unlock_mode %d\r\n", mode);
 
 	--sleepmgr_locks[mode];
 
@@ -217,8 +218,10 @@ static inline enum sleepmgr_mode sleepmgr_get_sleep_mode(void)
 	// Find first non-zero lock count, starting with the shallowest modes.
 	while (!(*lock_ptr)) {
 		lock_ptr++;
+		printf("lock_ptr %d\r\n", *lock_ptr);
 		sleep_mode = (enum sleepmgr_mode)(sleep_mode + 1);
 	}
+	printf("sleepmgr_get_sleep_mode %d\r\n", sleep_mode);
 
 	// Catch the case where one too many sleepmgr_unlock_mode() call has been
 	// performed on the deepest sleep mode.

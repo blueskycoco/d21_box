@@ -16,7 +16,7 @@ extern bool libre_found;
 #if CONSOLE_OUTPUT_ENABLED
 #define APP_HEADER "samd21 black box\r\n"
 #endif
-
+#define LINE 15
 int32_t cur_ts = -1;
 int32_t bak_ts = -1;
 int32_t max_ts = 0;
@@ -56,10 +56,10 @@ static void black_system_init(void)
 #endif
 	/* Enable the global interrupts */
 	cpu_irq_enable();
-	
+
 	/* Start USB host stack */
-	uhc_start();
-	gprs_config();
+	//uhc_start();
+	//gprs_config();
 	if (history_init())
 		printf("load history done\r\n");
 }
@@ -83,16 +83,16 @@ void upload_json(uint8_t *xt_data, uint32_t xt_len)
 	char *json = NULL;
 	int32_t ts;
 	unsigned int i,upload_num=0;
-	
+
 	if (!xt_data || xt_len == 0)
 		return;
-	
+
 	for (i = 0; i < xt_len;) {
 		/* |**|****|*| */
 		ts = xt_data[i+2] << 24 | 
-			 xt_data[i+3] << 16 | 
-			 xt_data[i+4] <<  8 | 
-			 xt_data[i+5] <<  0;
+			xt_data[i+3] << 16 | 
+			xt_data[i+4] <<  8 | 
+			xt_data[i+5] <<  0;
 		if (ts > cur_ts) {
 			/*check ts > last ts*/
 			if (ts > max_ts)
@@ -102,7 +102,7 @@ void upload_json(uint8_t *xt_data, uint32_t xt_len)
 			//printf("add ts %d,gid %d, blood %d to list\r\n", (int)ts,
 			//	(int)gid, (int)bloodSugar);
 			json = build_json(json, 0, bloodSugar, ts, gid, 
-							device_serial_no);
+					device_serial_no);
 			upload_num++;
 			//printf("num %d\r\n", upload_num);
 			if (upload_num >= MAX_JSON) {
@@ -142,7 +142,7 @@ static void update_time(uint32_t time)
 		ts2date(time, &rtc_time);
 		set_rtc_time(rtc_time);
 		apollo_set_date_time(rtc_time.second,rtc_time.minute,rtc_time.hour,
-			rtc_time.day,rtc_time.month,rtc_time.year);
+				rtc_time.day,rtc_time.month,rtc_time.year);
 		printf("end save time\r\n");
 	}
 
@@ -151,6 +151,28 @@ static void update_time(uint32_t time)
 		save_dev_ts(cur_ts);
 		printf("save ts %d\r\n", (int)cur_ts);
 	}
+}
+static void button_callback(void)
+{
+	printf("user button pressed\r\n");
+}
+static void enable_button_interrupt(void)
+{
+	/* Initialize EIC for button wakeup */
+	struct extint_chan_conf eint_chan_conf;
+	extint_chan_get_config_defaults(&eint_chan_conf);
+
+	eint_chan_conf.gpio_pin            = PIN_PA15A_EIC_EXTINT15;
+	eint_chan_conf.gpio_pin_mux        = MUX_PA15A_EIC_EXTINT15;
+	eint_chan_conf.detection_criteria  = EXTINT_DETECT_FALLING;
+	eint_chan_conf.filter_input_signal = true;
+	extint_chan_set_config(LINE, &eint_chan_conf);
+	extint_register_callback(button_callback,
+			LINE,
+			EXTINT_CALLBACK_TYPE_DETECT);
+	extint_chan_clear_detected(LINE);
+	extint_chan_enable_callback(LINE,
+			EXTINT_CALLBACK_TYPE_DETECT);
 }
 int main(void)
 {
@@ -166,7 +188,8 @@ int main(void)
 	printf("ID %x %x %x %x \r\n", (unsigned int)serial_no[0],
 			(unsigned int)serial_no[1], (unsigned int)serial_no[2], 
 			(unsigned int)serial_no[3]);
-	init_rtc();				
+	init_rtc();			
+	enable_button_interrupt();
 	do_it("{\"status\":0,\"message\":\"????\",\"ext\":{\"systemTime\":1508509207661},\"returnTime\":1508509207656,\"domain\":0}", &server_time);
 	while (true) {
 		if (libre_found) {
@@ -175,8 +198,8 @@ int main(void)
 			delay_ms(100);
 			if (!uhc_is_suspend()) {
 				//if (strlen(cur_libre_serial_no) == 0)
-					//if (!apollo_init())
-					//	memset(cur_libre_serial_no, 0, 32);
+				//if (!apollo_init())
+				//	memset(cur_libre_serial_no, 0, 32);
 				apollo_init();	
 				if (strlen(cur_libre_serial_no) != 0) {
 					if (cur_ts == -1 || bak_ts == -1) {
