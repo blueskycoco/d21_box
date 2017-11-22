@@ -1,1 +1,2 @@
 export PATH=/cygdrive/e/project/samd21/arm-gnu-toolchain/bin:$PATH
+export PATH=/cygdrive/c/project/samd21/gcc-atmel/arm-gnu-toolchain/bin:$PATH
