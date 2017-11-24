@@ -8,6 +8,8 @@ static void rtc_match_callback(void)
 {
 	alarm.time.hour   += 1;
 	alarm.time.hour= alarm.time.hour% 24;
+	//alarm.time.second   += 10;
+	//alarm.time.second   %= 60;
 	alarm.mask = RTC_CALENDAR_ALARM_MASK_HOUR;	
 	rtc_calendar_set_alarm(&rtc_instance, &alarm, RTC_CALENDAR_ALARM_0);
 }

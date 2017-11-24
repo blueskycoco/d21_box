@@ -930,9 +930,10 @@ void uhd_disable(bool b_id_stop)
 		return; // No need to disable host, it is done automatically by hardware
 	}
 #endif
+	uhd_sleep_mode(UHD_STATE_OFF);
 
 	flags = cpu_irq_save();
-	usb_dual_disable();
+	//usb_dual_disable();
 	cpu_irq_restore(flags);
 }
 

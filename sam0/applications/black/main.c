@@ -64,7 +64,7 @@ static void black_system_init(void)
 	gprs_init();
 	port_pin_set_output_level(PIN_PA07, true);
 	/* Start USB host stack */
-	uhc_start();
+	//uhc_start();
 	if (history_init())
 		printf("load history done\r\n");
 }
@@ -294,6 +294,8 @@ int main(void)
 		}
 		long_press = true;
 		g_hour = rtc_time_now.hour;
+		uhc_start();
+		delay_s(2);
 		usb_power(1);
 		delay_s(5);
 		if (libre_found) {
@@ -321,6 +323,7 @@ int main(void)
 			}
 		} else
 			printf("no sugar insert\r\n");
+		uhc_stop(false);
 		usb_power(0);
 		gprs_power(0);
 		sleepmgr_enter_sleep();
