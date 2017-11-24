@@ -171,7 +171,7 @@ void upload_json(uint8_t *xt_data, uint32_t xt_len)
 			 xt_data[i+3] << 16 | 
 			 xt_data[i+4] <<  8 | 
 			 xt_data[i+5] <<  0;
-		gid = (xt_data[0] << 8) | xt_data[i+1];
+		gid = (xt_data[i] << 8) | xt_data[i+1];
 		if (ts > cur_ts || gid > cur_gid) {
 			/*check ts > last ts*/
 			if (ts > max_ts)
