@@ -4,6 +4,7 @@
 #define TS_LEN 4
 uint32_t dev_addr = 0;
 
+/*serial len 1 | serial n| ts 4 | gid 2*/
 uint8_t dev_info[4096] = {0};
 uint32_t g_index = 0;
 struct spi_module at25dfx_spi;
@@ -29,14 +30,16 @@ static void at25dfx_init(void)
 	at25dfx_chip_init(&at25dfx_chip, &at25dfx_spi, &at25dfx_chip_config);
 
 }
-void save_dev_ts(uint32_t ts)
+void save_dev_ts(uint32_t ts, uint16_t gid)
 {
 	int i;
-	if (g_index + 3 < 4096) {
+	if (g_index + 5 < 4096) {
 		dev_info[g_index] = (ts >> 24) & 0xff;
 		dev_info[g_index+1] = (ts >> 16) & 0xff;
 		dev_info[g_index+2] = (ts >> 8) & 0xff;
 		dev_info[g_index+3] = (ts >> 0) & 0xff;
+		dev_info[g_index+4] = (gid >> 8) & 0xff;
+		dev_info[g_index+5] = (gid ) & 0xff;
 	}
 	printf("save ts to %d %d\r\n", g_index,ts);
 	enum status_code ret = at25dfx_chip_wake(&at25dfx_chip);
@@ -60,6 +63,10 @@ void save_dev_ts(uint32_t ts)
 	}
 	ret = at25dfx_chip_sleep(&at25dfx_chip);
 	if (ret != STATUS_OK) printf("chip sleep failed %d\r\n", ret);
+}
+uint16_t g_gid = 0;
+uint16_t get_dev_gid() {
+	return g_gid;
 }
 uint32_t get_dev_ts(uint8_t *serial, uint8_t len)
 {
@@ -94,31 +101,33 @@ uint32_t get_dev_ts(uint8_t *serial, uint8_t len)
 						 (dev_info[offset+len+3] << 16) |
 						 (dev_info[offset+len+4] << 8) |
 						 (dev_info[offset+len+5] << 0);
-					printf("found device offset %d , len %d, ts %d\r\n", offset,dev_info[offset],(int)ts);
-					g_index = offset+len+2;
+					g_gid = (dev_info[offset+len+6]) << 8 |
+							(dev_info[offset+len+7]) ;
+					printf("found device offset %d , len %d, ts %d, gid %d\r\n", offset,dev_info[offset],(int)ts,(int)g_gid);
+					g_index = offset+len+4;
 					for (j=0; j<dev_info[offset]; j++)
 						printf("%c", dev_info[offset+j+1]);
 					printf("\r\n");
 					break;
 				}
 			}				
-			offset = offset + devx_len + TS_LEN + 2;
+			offset = offset + devx_len + TS_LEN + 2 +2;
 			if (offset >= 4096) {
 				at25dfx_chip_sleep(&at25dfx_chip);
 				return 0;
 			}
 		}
 	}
-
 	if (!found) {
 		if (dev_num == 0xffff) {/*first in use*/
 			printf("this 222 spi flash first in use %d\r\n",len);
 			dev_info[0] = 0x00;dev_info[1] = 0x01;
 			dev_info[2] = len;
 			memcpy(dev_info + 3, serial, len);
-			dev_info[len+4] = 0x00;dev_info[len+5] = 0x00;
-			dev_info[len+6] = 0x00;dev_info[len+7] = 0x00;
-			g_index = len+4;
+			dev_info[len+3] = 0x00;dev_info[len+4] = 0x00;
+			dev_info[len+5] = 0x00;dev_info[len+6] = 0x00;
+			dev_info[len+7] = 0x00;dev_info[len+8] = 0x00;
+			g_index = len+6;
 		} else {
 			printf("add new device at %d \r\n",offset);
 			dev_num++;
@@ -129,7 +138,9 @@ uint32_t get_dev_ts(uint8_t *serial, uint8_t len)
 			dev_info[offset+len+3] = 0x00;
 			dev_info[offset+len+4] = 0x00;
 			dev_info[offset+len+5] = 0x00;
-			g_index = offset+len+2;
+			dev_info[offset+len+6] = 0x00;
+			dev_info[offset+len+7] = 0x00;
+			g_index = offset+len+4;
 		}
 		ret = at25dfx_chip_set_sector_protect(&at25dfx_chip, 0x00000, false);
 		if (ret != STATUS_OK) 

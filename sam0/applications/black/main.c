@@ -22,6 +22,9 @@ int32_t g_hour = -1;
 int32_t cur_ts = -1;
 int32_t bak_ts = -1;
 int32_t max_ts = 0;
+uint16_t cur_gid = -1;
+uint16_t bak_gid = -1;
+uint16_t max_gid = 0;
 uint32_t server_time = 0;
 uint32_t serial_no[4];
 extern uint8_t *buf;
@@ -73,6 +76,7 @@ void ui_usb_connection_event(uhc_device_t *dev, bool b_present)
 		libre_found = false;		
 		//cur_ts = -1;
 		bak_ts = -1;
+		bak_gid = -1;
 		memset(cur_libre_serial_no,0,32);
 		printf("usb disconnect\r\n");
 	} else
@@ -153,7 +157,7 @@ char *json = NULL;
 void upload_json(uint8_t *xt_data, uint32_t xt_len)
 {
 	
-	int32_t ts;
+	int32_t ts,gid;
 	unsigned int i,upload_num=0;	
 	uint32_t total_len = 0;
 	
@@ -167,10 +171,13 @@ void upload_json(uint8_t *xt_data, uint32_t xt_len)
 			 xt_data[i+3] << 16 | 
 			 xt_data[i+4] <<  8 | 
 			 xt_data[i+5] <<  0;
-		if (ts > cur_ts) {
+		gid = (xt_data[0] << 8) | xt_data[i+1];
+		if (ts > cur_ts || gid > cur_gid) {
 			/*check ts > last ts*/
 			if (ts > max_ts)
 				max_ts = ts;
+			if (gid > max_gid)
+				max_gid = gid;
 			memcpy(xt_data_now+xt_len_now, xt_data+i,11);
 			xt_len_now += 11;
 		}
@@ -215,6 +222,8 @@ void upload_json(uint8_t *xt_data, uint32_t xt_len)
 		if (upload_data(json,&server_time))	{
 			if (max_ts > bak_ts)
 				bak_ts = max_ts;
+			if (max_gid > bak_gid)
+				bak_gid = max_gid;
 		}
 	}
 	else
@@ -237,11 +246,14 @@ static void update_time(uint32_t time)
 		printf("end save time\r\n");
 	}
 
-	if (bak_ts > cur_ts) {
-		cur_ts = bak_ts;
-		printf("save ts 1 %d\r\n", (int)cur_ts);
-		save_dev_ts(cur_ts);
-		printf("save ts 2 %d\r\n", (int)cur_ts);
+	if (bak_ts > cur_ts || bak_gid > cur_gid) {
+		if (bak_ts > cur_ts)
+			cur_ts = bak_ts;
+		if (bak_gid > cur_gid)
+			cur_gid = bak_gid;
+		printf("save ts 1 %d %d\r\n", (int)cur_ts,(int)cur_gid);
+		save_dev_ts(cur_ts,cur_gid);
+		printf("save ts 2 %d %d\r\n", (int)cur_ts,(int)cur_gid);
 	}
 }
 int main(void)
@@ -256,10 +268,16 @@ int main(void)
 			(unsigned)serial_no[2], (unsigned)serial_no[3]);
 	black_system_init();
 	enable_button_interrupt();
-	printf(">>ID %x %x %x %x \r\n", (unsigned int)serial_no[0],
+	printf(">>I11D %x %x %x %x \r\n", (unsigned int)serial_no[0],
 			(unsigned int)serial_no[1], (unsigned int)serial_no[2], 
 			(unsigned int)serial_no[3]);
 	init_rtc();	
+	/*while (true) {
+		printf("enter sleeping\r\n");
+		sleepmgr_enter_sleep();
+		printf("leave sleeping\r\n");
+		delay_s(5);
+	}*/
 	json = (char *)malloc(1286*sizeof(char));
 	buf = (uint8_t *)malloc(550*sizeof(uint8_t));	
 	xt_data_now = (uint8_t *)malloc(550*sizeof(uint8_t));
@@ -285,15 +303,18 @@ int main(void)
 			if (!uhc_is_suspend()) {
 				apollo_init();	
 				if (strlen(cur_libre_serial_no) != 0) {
-					if (cur_ts == -1 || bak_ts == -1) {
+					if (cur_ts == -1 || bak_ts == -1 ||
+							cur_gid == -1 || bak_gid == -1) {
 						cur_ts = get_dev_ts(cur_libre_serial_no,strlen(cur_libre_serial_no));
 						bak_ts = cur_ts;
-						printf("%s inserted , ts %d\r\n",
-								cur_libre_serial_no,(int)cur_ts);
+						cur_gid = get_dev_gid();
+						bak_gid = cur_gid;
+						printf("%s inserted , ts %d, gid %d\r\n",
+								cur_libre_serial_no,(int)cur_ts,(int)cur_gid);
 					}
-					printf("cur ts %d %d\r\n", cur_ts,bak_ts);
+					printf("cur ts %d %d, cur gid %d %d\r\n", cur_ts,bak_ts,cur_gid,bak_gid);
 					ui_init();
-					if (cur_ts < bak_ts)
+					if (cur_ts < bak_ts || cur_gid < bak_gid)
 						update_time(server_time);
 				}
 				uhc_suspend(false);
