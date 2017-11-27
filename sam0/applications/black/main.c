@@ -34,6 +34,16 @@ uint8_t *xt_data_now=NULL;
 uint32_t xt_len_now=0;
 extern void ts2date(uint32_t time, struct rtc_calendar_time *date_out);
 char device_serial_no[33] = {0};
+static void set_unused_io(void)
+{
+	struct port_config pin_conf;
+	port_get_config_defaults(&pin_conf);
+	pin_conf.direction  = PORT_PIN_DIR_INPUT;
+	port_pin_set_config(PIN_PA02, &pin_conf);
+	port_pin_set_config(PIN_PA03, &pin_conf);
+	port_pin_set_config(PIN_PA06, &pin_conf);
+	port_pin_set_config(PIN_PA28, &pin_conf);
+}
 static void black_system_init(void)
 {
 	struct nvm_config nvm_cfg;
@@ -60,7 +70,7 @@ static void black_system_init(void)
 #endif
 	/* Enable the global interrupts */
 	cpu_irq_enable();
-	
+	set_unused_io();	
 	gprs_init();
 	port_pin_set_output_level(PIN_PA07, true);
 	/* Start USB host stack */
@@ -289,9 +299,11 @@ int main(void)
 		{
 			printf("continue to sleep %d %d %d\r\n",
 				rtc_time_now.hour,g_hour,long_press);
+			at25dfx_off();
 			sleepmgr_enter_sleep();
 			continue;
 		}
+		at25dfx_on();
 		long_press = true;
 		g_hour = rtc_time_now.hour;
 		uhc_start();
@@ -326,6 +338,7 @@ int main(void)
 		uhc_stop(false);
 		usb_power(0);
 		gprs_power(0);
+		at25dfx_off();
 		sleepmgr_enter_sleep();
 	}
 }

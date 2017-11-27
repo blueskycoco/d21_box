@@ -30,6 +30,14 @@ static void at25dfx_init(void)
 	at25dfx_chip_init(&at25dfx_chip, &at25dfx_spi, &at25dfx_chip_config);
 
 }
+void at25dfx_off(void)
+{
+	spi_disable(&at25dfx_spi);
+}
+void at25dfx_on(void)
+{
+	spi_enable(&at25dfx_spi);
+}
 void save_dev_ts(uint32_t ts, uint16_t gid)
 {
 	int i;
