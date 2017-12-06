@@ -3,29 +3,30 @@
 #include "rtc.h"
 struct rtc_module rtc_instance;
 struct rtc_calendar_alarm_time alarm;
-
+int g_rate = 1;
 static void rtc_match_callback(void)
 {
-	alarm.time.hour   += 1;
+	alarm.time.hour   += g_rate;
 	alarm.time.hour= alarm.time.hour% 24;
 	//alarm.time.second   += 10;
 	//alarm.time.second   %= 60;
 	alarm.mask = RTC_CALENDAR_ALARM_MASK_HOUR;	
 	rtc_calendar_set_alarm(&rtc_instance, &alarm, RTC_CALENDAR_ALARM_0);
 }
-bool set_rtc_time(struct rtc_calendar_time cur_time)
+bool set_rtc_time()
 {	
-	alarm.time.year      = cur_time.year;
+	/*alarm.time.year      = cur_time.year;
 	alarm.time.month     = cur_time.month;
-	alarm.time.day       = cur_time.day;
-	alarm.time.hour      = cur_time.hour + 1;
+	alarm.time.day       = cur_time.day;*/
+	printf("set new alarm to next %d hour\r\n", g_rate);
+	alarm.time.hour      = alarm.time.hour + g_rate;
 	alarm.time.hour 	 = alarm.time.hour % 24;
-	alarm.time.minute    = cur_time.minute;
-	alarm.time.second    = cur_time.second;
+	/*alarm.time.minute    = cur_time.minute;
+	alarm.time.second    = cur_time.second;*/
 	alarm.mask 			 = RTC_CALENDAR_ALARM_MASK_HOUR;
 	
 	rtc_calendar_set_alarm(&rtc_instance, &alarm, RTC_CALENDAR_ALARM_0);
-	rtc_calendar_set_time(&rtc_instance, &cur_time);
+	//rtc_calendar_set_time(&rtc_instance, &cur_time);
 
 	return true;
 }

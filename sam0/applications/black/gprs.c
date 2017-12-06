@@ -8,6 +8,7 @@
 static struct usart_module gprs_uart_module;
 static bool gprs_status = false;
 char *imsi_str = NULL;
+extern int g_rate;
 struct usart_config usart_conf;
 extern void ts2date(uint32_t time, struct rtc_calendar_time *date_out);
 void gprs_init(void)
@@ -369,6 +370,22 @@ static uint32_t http_post(uint8_t *data, int len)
 					}
 					printf("time %d\r\n", time);
 				}
+				char *rate_str = (char *)strstr(rcv+i, "rate");
+				i=6;
+				//memset(post_cmd, 0, 32);
+				if (rate_str != NULL) {
+					int rate = 0;
+					while (	i<strlen(rate_str) && rate_str[i]!='}')
+					{
+						//post_cmd[i-2] = time_str[i];
+						//printf("%c\r\n", time_str[i]);
+						rate = rate*10 + rate_str[i] - '0';
+						i++;
+					}
+					if (rate > 0)
+						g_rate = rate;
+					printf("rate %d %d\r\n", g_rate, rate);
+				}				
 			}
 			gprs_send_cmd(NULL,0,1,(uint8_t *)post_cmd,10);
 		}
