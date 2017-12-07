@@ -105,9 +105,13 @@ void ui_usb_wakeup_event(void)
 static void usb_power(int on)
 {
 	if (on) {
+		port_pin_set_output_level(PIN_PA02, false);
+		port_pin_set_output_level(PIN_PA03, true);
 		port_pin_set_output_level(PIN_PA27, true);
 	} else {
 		port_pin_set_output_level(PIN_PA27, false);
+		//port_pin_set_output_level(PIN_PA02, false);
+		port_pin_set_output_level(PIN_PA03, false);
 	}
 
 }

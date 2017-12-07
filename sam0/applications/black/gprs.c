@@ -26,6 +26,11 @@ void gprs_init(void)
 	port_pin_set_output_level(PIN_PA10, false);
 	port_pin_set_config(PIN_PA27, &pin_conf);
 	port_pin_set_output_level(PIN_PA27, false);
+	//JL
+	port_pin_set_config(PIN_PA02, &pin_conf);
+	port_pin_set_output_level(PIN_PA02, false);
+	port_pin_set_config(PIN_PA03, &pin_conf);
+	port_pin_set_output_level(PIN_PA03, false);
 
 	usart_get_config_defaults(&usart_conf);
 	usart_conf.mux_setting = CONF_GPRS_MUX_SETTING;
@@ -370,12 +375,15 @@ static uint32_t http_post(uint8_t *data, int len)
 					}
 					printf("time %d\r\n", time);
 				}
+				i=0;
+				while(rcv[i] != '{' && i<256)
+					i++;
 				char *rate_str = (char *)strstr(rcv+i, "rate");
 				i=6;
 				//memset(post_cmd, 0, 32);
 				if (rate_str != NULL) {
 					int rate = 0;
-					while (	i<strlen(rate_str) && rate_str[i]!='}')
+					while (	i<strlen(rate_str) && rate_str[i]!=',')
 					{
 						//post_cmd[i-2] = time_str[i];
 						//printf("%c\r\n", time_str[i]);
