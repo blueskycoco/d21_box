@@ -12,13 +12,13 @@ static void rtc_match_callback(void)
 	//alarm.time.second   %= 60;
 	alarm.mask = RTC_CALENDAR_ALARM_MASK_HOUR;	
 	rtc_calendar_set_alarm(&rtc_instance, &alarm, RTC_CALENDAR_ALARM_0);
+	printf("call back %d\r\n",alarm.time.hour);
 }
 bool set_rtc_time()
 {	
 	/*alarm.time.year      = cur_time.year;
 	alarm.time.month     = cur_time.month;
 	alarm.time.day       = cur_time.day;*/
-	printf("set new alarm to next %d hour\r\n", g_rate);
 	alarm.time.hour      = alarm.time.hour + g_rate;
 	alarm.time.hour 	 = alarm.time.hour % 24;
 	/*alarm.time.minute    = cur_time.minute;
@@ -27,6 +27,7 @@ bool set_rtc_time()
 	
 	rtc_calendar_set_alarm(&rtc_instance, &alarm, RTC_CALENDAR_ALARM_0);
 	//rtc_calendar_set_time(&rtc_instance, &cur_time);
+	printf("set new alarm to next %d hour\r\n", alarm.time.hour);
 
 	return true;
 }
@@ -34,7 +35,7 @@ void init_rtc(void)
 {
 	struct rtc_calendar_config config_rtc_calendar;
 	rtc_calendar_get_config_defaults(&config_rtc_calendar);
-	
+	rtc_calendar_get_time_defaults(&alarm);	
 	config_rtc_calendar.clock_24h = true;
 	config_rtc_calendar.alarm[0].time = alarm.time;
 	config_rtc_calendar.alarm[0].mask = RTC_CALENDAR_ALARM_MASK_HOUR;
