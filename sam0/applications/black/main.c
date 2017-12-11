@@ -267,6 +267,8 @@ static void update_time(uint32_t time)
 			cur_gid = bak_gid;
 		printf("save ts 1 %d %d\r\n", (int)cur_ts,(int)cur_gid);
 		save_dev_ts(cur_ts,cur_gid);
+		struct rtc_calendar_time rtc_time_now;
+		get_rtc_time(&rtc_time_now);
 		set_rtc_time();
 		printf("save ts 2 %d %d\r\n", (int)cur_ts,(int)cur_gid);
 	}

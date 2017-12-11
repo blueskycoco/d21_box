@@ -4,6 +4,7 @@
 struct rtc_module rtc_instance;
 struct rtc_calendar_alarm_time alarm;
 int g_rate = 1;
+int first_time = 1;
 static void rtc_match_callback(void)
 {
 	alarm.time.hour   += g_rate;
@@ -19,7 +20,12 @@ bool set_rtc_time()
 	/*alarm.time.year      = cur_time.year;
 	alarm.time.month     = cur_time.month;
 	alarm.time.day       = cur_time.day;*/
+	if (first_time) {
+	alarm.time.hour      = alarm.time.hour + g_rate -1;
+	first_time = 0;
+	} else {
 	alarm.time.hour      = alarm.time.hour + g_rate;
+	}
 	alarm.time.hour 	 = alarm.time.hour % 24;
 	/*alarm.time.minute    = cur_time.minute;
 	alarm.time.second    = cur_time.second;*/
