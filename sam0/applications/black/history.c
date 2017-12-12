@@ -105,14 +105,14 @@ uint32_t get_dev_ts(uint8_t *serial, uint8_t len)
 					printf("%c<>%c\r\n",serial[j],dev_info[offset+1+j]);
 				if (memcmp(serial, &(dev_info[offset+1]), len) == 0) {
 					found = true;
-					ts = (dev_info[offset+len] << 24) |
-						 (dev_info[offset+len+1] << 16) |
-						 (dev_info[offset+len+2] << 8) |
-						 (dev_info[offset+len+3] << 0);
-					g_gid = (dev_info[offset+len+4]) << 8 |
-							(dev_info[offset+len+5]) ;
+					ts = (dev_info[offset+len+1] << 24) |
+						 (dev_info[offset+len+2] << 16) |
+						 (dev_info[offset+len+3] << 8) |
+						 (dev_info[offset+len+4] << 0);
+					g_gid = (dev_info[offset+len+5]) << 8 |
+							(dev_info[offset+len+6]) ;
 					printf("found device offset %d , len %d, ts %d, gid %d %x %x\r\n", offset,dev_info[offset],(int)ts,(int)g_gid,dev_info[offset+len+4],dev_info[offset+len+5]);
-					g_index = offset+len+4;
+					g_index = offset+len+1;
 					for (j=0; j<dev_info[offset]; j++)
 						printf("%c", dev_info[offset+j+1]);
 					printf("\r\n");
