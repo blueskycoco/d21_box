@@ -22,9 +22,9 @@ void submit_recorder(unsigned char cate, unsigned char data, unsigned short num,
 {
 	struct rtc_calendar_time date_out;
 	ts2date(time, &date_out);
-	printf("Num\t%5d\tTime\t%4d-%02d-%02d %02d:%02d:%02d\tCate\t%d\tData\t%3d\r\n", num, date_out.year,
-			date_out.month, date_out.day, date_out.hour, date_out.minute, date_out.second, cate, data);
-	//printf("Num\t%5d\tTime\t%10d\tData\t%3d\r\n", num, time, data);
+	//printf("Num\t%5d\tTime\t%4d-%02d-%02d %02d:%02d:%02d\tCate\t%d\tData\t%3d\r\n", num, date_out.year,
+			//date_out.month, date_out.day, date_out.hour, date_out.minute, date_out.second, cate, data);
+	printf("Num\t%5d\tTime\t%10d\tCate\t%d\tData\t%3d\r\n", num, time, cate,data);
 	if (g_num == /*4095*/550) {
 		/* flush to spi flash*/
 		upload_json(buf, g_num);

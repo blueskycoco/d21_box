@@ -18,7 +18,7 @@ extern char *imsi_str;
 #define APP_HEADER "samd21 black box\r\n"
 #endif
 int32_t g_hour = -1;
-
+uint8_t g_flag = 0;
 int32_t cur_ts = -1;
 int32_t bak_ts = -1;
 int32_t max_ts = 0;
@@ -218,6 +218,7 @@ void upload_json(uint8_t *xt_data, uint32_t xt_len)
 		printf("json %s\r\n",json);
 		uint8_t *serial_no_tmp = (uint8_t *)serial_no;
 		uint8_t tmp1 = 0,tmp2 = 0;
+		if (g_flag == 0) {
 		for (i=0;i<16;i=i+4)
 		{
 			tmp1 = serial_no_tmp[i];
@@ -226,6 +227,8 @@ void upload_json(uint8_t *xt_data, uint32_t xt_len)
 			tmp2 = serial_no_tmp[i+1];
 			serial_no_tmp[i+1] = serial_no_tmp[i+2];
 			serial_no_tmp[i+2] = tmp2;
+		}
+		g_flag = 1;
 		}
 		toHex((uint8_t *)serial_no_tmp, 16, json+offs);
 		offs += 32;		
