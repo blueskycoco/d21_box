@@ -17,8 +17,7 @@ void submit_serial(char * serial)
 	memset(cur_libre_serial_no,0,32);
 	strcpy(cur_libre_serial_no, serial);
 }
-
-void submit_recorder(unsigned char cate, unsigned char data, unsigned short num, unsigned int time)
+void submit_recorder(unsigned char cate, unsigned short data, unsigned short num, unsigned int time)
 {
 	struct rtc_calendar_time date_out;
 	ts2date(time, &date_out);
@@ -30,7 +29,8 @@ void submit_recorder(unsigned char cate, unsigned char data, unsigned short num,
 		upload_json(buf, g_num);
 		g_num = 0;		
 	}
-	uint32_t bloodSugar = data*142+22;
+	//uint32_t bloodSugar = data*142+22;
+	uint32_t bloodSugar = data*569;
 	buf[g_num++] = (num>>8) & 0xff;
 	buf[g_num++] = num & 0xff;
 	buf[g_num++] = (time>>24) & 0xff;
