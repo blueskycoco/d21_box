@@ -269,8 +269,10 @@ uint8_t gprs_config(void)
 	const uint8_t qhttpcfg[] 	= "AT+QHTTPCFG=\"Requestheader\",1\n";	
 //	const uint8_t qhttpurl[] 	= "AT+QHTTPURL=67,30\n";
 //	const uint8_t url[] 		= "http://stage.boyibang.com/weitang/sgSugarRecord/xiaohei/upload_json\n";
-	const uint8_t qhttpurl[] 	= "AT+QHTTPURL=65,30\n";
-	const uint8_t url[] 		= "http://www.welltang.com/weitang/sgSugarRecord/xiaohei/upload_json\n";
+//	const uint8_t qhttpurl[] 	= "AT+QHTTPURL=65,30\n";
+//	const uint8_t url[] 		= "http://www.welltang.com/weitang/sgSugarRecord/xiaohei/upload_json\n";
+	const uint8_t qhttpurl[] 	= "AT+QHTTPURL=62,30\n";
+	const uint8_t url[] 		= "http://stage.boyibang.com/weitang/sgSugarRecord/xiaohei/upload\n";
 	if (gprs_status)
 		return 0;
 	while(1) {
